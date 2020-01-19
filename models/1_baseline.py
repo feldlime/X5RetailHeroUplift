@@ -1,9 +1,13 @@
-import pandas
-import datetime
+from os.path import join as pjoin
+
 import numpy as np
+import pandas as pd
+
 from sklearn.base import clone
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingClassifier
+
+from utils import uplift_score, DATA_PATH, SUBMISSIONS_PATH
 
 
 def uplift_fit_predict(model, X_train, treatment_train, target_train, X_test):
@@ -27,30 +31,20 @@ def uplift_fit_predict(model, X_train, treatment_train, target_train, X_test):
     return predict_uplift
 
 
-def uplift_score(prediction, treatment, target, rate=0.3):
-    """
-    Подсчет Uplift Score
-    """
-    order = np.argsort(-prediction)
-    treatment_n = int((treatment == 1).sum() * rate)
-    treatment_p = target[order][treatment[order] == 1][:treatment_n].mean()
-    control_n = int((treatment == 0).sum() * rate)
-    control_p = target[order][treatment[order] == 0][:control_n].mean()
-    score = treatment_p - control_p
-    return score
-
-
 # Чтение данных
 
-df_clients = pandas.read_csv('data/clients.csv', index_col='client_id')
-df_train = pandas.read_csv('data/uplift_train.csv', index_col='client_id')
-df_test = pandas.read_csv('data/uplift_test.csv', index_col='client_id')
+df_clients = pd.read_csv(pjoin(DATA_PATH, 'clients.csv'), index_col='client_id', parse_dates=['first_issue_date', 'first_redeem_date'])
+df_train = pd.read_csv(pjoin(DATA_PATH, 'uplift_train.csv'), index_col='client_id')
+df_test = pd.read_csv(pjoin(DATA_PATH, 'uplift_test.csv'), index_col='client_id')
 
 # Извлечение признаков
+MIN_DATETIME = df_clients['first_issue_date'].min()
 
-df_clients['first_issue_unixtime'] = pandas.to_datetime(df_clients['first_issue_date']).astype(int)/10**9
-df_clients['first_redeem_unixtime'] = pandas.to_datetime(df_clients['first_redeem_date']).astype(int)/10**9
-df_features = pandas.DataFrame({
+
+df_clients['first_issue_unixtime'] = (df_clients['first_issue_date'] - MIN_DATETIME).dt.total_seconds()/10**9
+df_clients['first_redeem_unixtime'] = (df_clients['first_redeem_date'] - MIN_DATETIME).dt.total_seconds()/10**9
+
+df_features = pd.DataFrame({
     'gender_M': (df_clients['gender'] == 'M').astype(int),
     'gender_F': (df_clients['gender'] == 'F').astype(int),
     'gender_U': (df_clients['gender'] == 'U').astype(int),
@@ -92,5 +86,5 @@ test_uplift = uplift_fit_predict(
     X_test=df_features.loc[indices_test, :].fillna(0).values,
 )
 
-df_submission = pandas.DataFrame({'uplift': test_uplift}, index=df_test.index)
-df_submission.to_csv('submission.csv')
+df_submission = pd.DataFrame({'uplift': test_uplift}, index=df_test.index)
+df_submission.to_csv(pjoin(SUBMISSIONS_PATH, 'submission_baseline.csv'))
