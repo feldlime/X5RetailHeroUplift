@@ -1,6 +1,6 @@
 # data paths
 data
-results
+submissions
 
 # Jupyter Notebook
 .ipynb_checkpoints
