@@ -104,7 +104,7 @@ def uplift_fit_predict(X_train, treatment_train, target_train, X_test):
     # model = uplift_tree.DecisionTreeClassifier(criterion='uplift_gini')
     # model.
 
-    rf_clf = UpliftRandomForestClassifier(n_estimators=500, n_jobs=4)
+    rf_clf = UpliftRandomForestClassifier(n_estimators=200, n_jobs=4)
     rf_clf.fit(X_train, target_train, treatment_train)
     predict_uplift = rf_clf.predict(X_test)
 
