@@ -60,7 +60,7 @@ class UpliftRandomForestClassifier:
 
         n_rows, n_columns = X.shape
         n = n_rows
-        m = 3
+        m = 4
         all_row_indices = np.arange(n_rows)
         all_col_indices = np.arange(n_columns)
 
@@ -104,7 +104,7 @@ def uplift_fit_predict(X_train, treatment_train, target_train, X_test):
     # model = uplift_tree.DecisionTreeClassifier(criterion='uplift_gini')
     # model.
 
-    rf_clf = UpliftRandomForestClassifier(n_estimators=1000, n_jobs=5)
+    rf_clf = UpliftRandomForestClassifier(n_estimators=500, n_jobs=4)
     rf_clf.fit(X_train, target_train, treatment_train)
     predict_uplift = rf_clf.predict(X_test)
 
@@ -200,12 +200,12 @@ if __name__ == '__main__':
 
 
     # Подготовка предсказаний для тестовых клиентов
-    test_uplift = uplift_fit_predict(
-        X_train=X_train,
-        treatment_train=treatment_train,
-        target_train=target_train,
-        X_test=X_test,
-    )
-
-    df_submission = pd.DataFrame({'uplift': test_uplift}, index=df_test.index)
-    df_submission.to_csv(pjoin(SUBMISSIONS_PATH, 'submission_direct_uplift_model.csv'))
+    # test_uplift = uplift_fit_predict(
+    #     X_train=X_train,
+    #     treatment_train=treatment_train,
+    #     target_train=target_train,
+    #     X_test=X_test,
+    # )
+    #
+    # df_submission = pd.DataFrame({'uplift': test_uplift}, index=df_test.index)
+    # df_submission.to_csv(pjoin(SUBMISSIONS_PATH, 'submission_direct_uplift_model.csv'))
