@@ -1,9 +1,14 @@
+import logging
+
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
     """No id in index"""
 
+    logger.info('Preparing features')
     min_datetime = clients['first_issue_date'].min()
     seconds_in_day = 60 * 60 * 24
     first_issue_time = (
@@ -23,6 +28,7 @@ def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
 
     gender = clients['gender'].values
 
+    logger.info('Combining features')
     features = pd.DataFrame({
         'client_id': clients['client_id'].values,
         'gender_M': (gender == 'M').astype(int),
