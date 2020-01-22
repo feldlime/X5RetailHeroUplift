@@ -5,7 +5,7 @@ from typing import Tuple
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-from utils import DATA_PATH, N_PURCHASES_ROWS
+from config import DATA_PATH, N_PURCHASES_ROWS
 
 logger = logging.getLogger(__name__)
 

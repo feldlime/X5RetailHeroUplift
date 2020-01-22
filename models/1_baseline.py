@@ -7,7 +7,8 @@ from sklearn.base import clone
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingClassifier
 
-from utils import uplift_score, DATA_PATH, SUBMISSIONS_PATH
+from utils import uplift_score
+from config import DATA_PATH, SUBMISSIONS_PATH
 
 
 def uplift_fit_predict(model, X_train, treatment_train, target_train, X_test):

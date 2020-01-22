@@ -17,7 +17,8 @@ from load_and_prepare import (
 from models.fit_predict import uplift_fit, uplift_predict
 from models.metrics import uplift_metrics
 from models.utils import make_z
-from utils import RANDOM_STATE, save_submission, N_ESTIMATORS
+from utils import save_submission
+from config import RANDOM_STATE, N_ESTIMATORS
 
 log_format = '[%(asctime)s] %(name)-25s %(levelname)-8s %(message)s'
 logging.basicConfig(
