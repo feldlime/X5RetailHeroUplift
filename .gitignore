@@ -12,3 +12,7 @@ submissions
 # Python
 *.pyc
 
+# data files
+*features*
+*.7z
+*.pkl
