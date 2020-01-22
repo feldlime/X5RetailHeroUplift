@@ -3,6 +3,8 @@ from typing import Dict
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
+from models.utils import make_z
+
 
 def score_uplift(
     prediction: np.ndarray,
@@ -27,10 +29,8 @@ def score_roc_auc(
     treatment: np.ndarray,
     target: np.ndarray,
 ) -> float:
-    y = target
-    w = treatment
-    z = y * w + (1 - y) * (1 - w)
-    score = roc_auc_score(z, prediction)
+    y_true = make_z(treatment, target)
+    score = roc_auc_score(y_true, prediction)
     return score
 
 

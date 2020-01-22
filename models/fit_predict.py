@@ -1,16 +1,6 @@
 from sklearn.base import clone
 
-
-def make_z(treatment, target):
-    y = target
-    w = treatment
-    z = y * w + (1 - y) * (1 - w)
-    return z
-
-
-def calc_uplift(prediction):
-    uplift = 2 * prediction - 1
-    return uplift
+from models.utils import make_z, calc_uplift
 
 
 def uplift_fit(model, X_train, treatment_train, target_train):

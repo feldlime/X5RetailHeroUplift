@@ -5,7 +5,7 @@ from typing import Tuple
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
-from utils import DATA_PATH
+from utils import DATA_PATH, N_PURCHASES_ROWS
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,8 @@ def prepare_products() -> Tuple[pd.DataFrame, LabelEncoder]:
 def load_purchases() -> pd.DataFrame:
     logger.info('Loading purchases...')
     purchases = pd.read_csv(
-        pjoin(DATA_PATH, 'purchases.csv')
+        pjoin(DATA_PATH, 'purchases.csv'),
+        nrows=N_PURCHASES_ROWS,
     )
     logger.info('Purchases are loaded')
     return purchases

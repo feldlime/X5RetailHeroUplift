@@ -8,7 +8,7 @@ from scipy import sparse
 
 from implicit.als import AlternatingLeastSquares
 
-from utils import RANDOM_STATE
+from utils import RANDOM_STATE, N_ALS_ITERATIONS
 
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -26,7 +26,7 @@ N_FACTORS = {
     'vendor_id': 10,
 }
 
-N_ITERATIONS = 15
+N_ITERATIONS = N_ALS_ITERATIONS
 
 
 def make_product_features(

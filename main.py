@@ -16,12 +16,13 @@ from load_and_prepare import (
 )
 from models.fit_predict import uplift_fit, uplift_predict
 from models.metrics import uplift_metrics
-from utils import RANDOM_STATE, save_submission
+from models.utils import make_z
+from utils import RANDOM_STATE, save_submission, N_ESTIMATORS
 
-log_format = '[%(asctime)s] %(name)-15s %(levelname)-8s %(message)s'
+log_format = '[%(asctime)s] %(name)-25s %(levelname)-8s %(message)s'
 logging.basicConfig(
     format=log_format,
-    level=logging.DEBUG,
+    level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
@@ -59,8 +60,18 @@ def main():
         .merge(purchase_lm_features, on='client_id', how='left')
         .merge(product_features, on='client_id', how='left')
     )
+    del client_features
+    del purchase_features
+    del purchase_lm_features
+    del product_features
+
     # TODO: normal fill na
-    features.fillna(-2)
+    features.fillna(-2, inplace=True)
+
+    features['client_id'] = client_encoder\
+        .inverse_transform(features['client_id'])
+    del client_encoder
+
     features.set_index('client_id', inplace=True)
     logger.info('Features are ready')
 
@@ -70,11 +81,12 @@ def main():
     indices_train = train.index
     indices_test = test.index
 
-    X_train = features.loc[indices_train, :].values
+    X_train = features.loc[indices_train, :]
     treatment_train = train.loc[indices_train, 'treatment_flg'].values
     target_train = train.loc[indices_train, 'target'].values
+    # y_valid = make_z(treatment_train, target_train)
 
-    X_test = features.loc[indices_test, :].values
+    X_test = features.loc[indices_test, :]
 
     # TODO: Instead of this do cross validation and grid search
     indices_learn, indices_valid = train_test_split(
@@ -83,18 +95,20 @@ def main():
         random_state=RANDOM_STATE,
     )
 
-    X_learn = features.loc[indices_learn, :].values
+    X_learn = features.loc[indices_learn, :]
     treatment_learn = train.loc[indices_learn, 'treatment_flg'].values
     target_learn = train.loc[indices_learn, 'target'].values
+    # y_learn = make_z(treatment_learn, target_learn)
 
-    X_valid = features.loc[indices_valid, :].values
+    X_valid = features.loc[indices_valid, :]
     treatment_valid = train.loc[indices_valid, 'treatment_flg'].values
     target_valid = train.loc[indices_valid, 'target'].values
+    # y_valid = make_z(treatment_valid, target_valid)
     logger.info('Data sets prepared')
 
     clf = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=100,
+        n_estimators=N_ESTIMATORS,
         num_leaves=50,
         max_depth=4,
         learning_rate=0.1,
