@@ -13,6 +13,6 @@ submissions
 *.pyc
 
 # data files
-*features*
+*features*.csv
 *.7z
 *.pkl
