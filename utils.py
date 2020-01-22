@@ -1,7 +1,7 @@
 from os.path import join as pjoin
 import os
 
-import numpy as np
+import pandas as pd
 
 
 PROJECT_PATH = os.path.dirname(__file__)
@@ -11,4 +11,6 @@ SUBMISSIONS_PATH = pjoin(PROJECT_PATH, 'submissions')
 RANDOM_STATE = 1
 
 
-
+def save_submission(indices_test, test_pred, filename):
+    df_submission = pd.DataFrame({'uplift': test_pred}, index=indices_test)
+    df_submission.to_csv(pjoin(SUBMISSIONS_PATH, filename))
