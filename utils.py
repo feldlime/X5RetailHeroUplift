@@ -8,7 +8,7 @@ PROJECT_PATH = os.path.dirname(__file__)
 DATA_PATH = pjoin(PROJECT_PATH, 'data')
 SUBMISSIONS_PATH = pjoin(PROJECT_PATH, 'submissions')
 
-
+RANDOM_STATE = 1
 
 
 
