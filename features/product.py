@@ -9,6 +9,7 @@ from scipy import sparse
 from implicit.als import AlternatingLeastSquares
 
 from config import RANDOM_STATE, N_ALS_ITERATIONS
+from features.utils import drop_column_multi_index_inplace
 
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -79,7 +80,7 @@ def make_usual_features(
             'is_alcohol': ['sum', 'mean'],
         }
     )
-    usual_features.columns = [f'{t[0]}_{t[1]}' for t in usual_features.columns]
+    drop_column_multi_index_inplace(usual_features)
     usual_features.reset_index(inplace=True)
 
     return usual_features
