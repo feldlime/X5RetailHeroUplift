@@ -4,6 +4,7 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+INTERVALS = ['year', 'month', 'day', 'dayofweek', 'dayofyear', 'hour']
 
 def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
     """No id in index"""
@@ -11,12 +12,12 @@ def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
     logger.info('Preparing features')
     min_datetime = clients['first_issue_date'].min()
     seconds_in_day = 60 * 60 * 24
-    first_issue_time = (
+    days_from_min_to_issue = (
             (clients['first_issue_date'] - min_datetime)
             .dt.total_seconds() /
             seconds_in_day
     ).values
-    first_redeem_time = (
+    days_from_min_to_redeem = (
             (clients['first_redeem_date'] - min_datetime)
             .dt.total_seconds() /
             seconds_in_day
@@ -35,10 +36,14 @@ def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
         'gender_F': (gender == 'F').astype(int),
         'gender_U': (gender == 'U').astype(int),
         'age': age,
-        'first_issue_time': first_issue_time,
-        'first_redeem_time': first_redeem_time,
-        'issue_redeem_delay': first_redeem_time - first_issue_time,
+        'days_from_min_to_issue': days_from_min_to_issue,
+        'days_from_min_to_redeem': days_from_min_to_redeem,
+        'issue_redeem_delay': days_from_min_to_redeem - days_from_min_to_issue,
     })
+    for event in ['issue', 'redeem']:
+        for interval in INTERVALS:
+            values = getattr(clients[f'first_{event}_date'].dt, interval)
+            features[f'{event}_{interval}'] = values
 
     features = features.fillna(-1)
 
