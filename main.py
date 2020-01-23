@@ -1,6 +1,8 @@
 import logging
+import pickle
 from datetime import timedelta
 
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMClassifier
 
@@ -28,8 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def main():
-
+def prepare_features() -> pd.DataFrame:
     logger.info('Loading data...')
     clients, client_encoder = prepare_clients()
     products, product_encoder = prepare_products()
@@ -57,9 +58,9 @@ def main():
     logger.info('Combining features...')
     features = (
         client_features
-        .merge(purchase_features, on='client_id', how='left')
-        .merge(purchase_lm_features, on='client_id', how='left')
-        .merge(product_features, on='client_id', how='left')
+            .merge(purchase_features, on='client_id', how='left')
+            .merge(purchase_lm_features, on='client_id', how='left')
+            .merge(product_features, on='client_id', how='left')
     )
     del client_features
     del purchase_features
@@ -69,14 +70,30 @@ def main():
     # TODO: normal fill na
     features.fillna(-2, inplace=True)
 
-    features['client_id'] = client_encoder\
+    features['client_id'] = client_encoder \
         .inverse_transform(features['client_id'])
     del client_encoder
 
-    features.set_index('client_id', inplace=True)
     logger.info('Features are ready')
 
+    return features
+
+def main():
+    # features = prepare_features()
+    #
+    # logger.info('Saving features...')
+    # with open('features.pkl', 'wb') as f:
+    #     pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
+    # logger.info('Features are saved')
+    #
+    logger.info('Loading features...')
+    with open('features.pkl', 'rb') as f:
+        features = pickle.load(f)
+    logger.info('Features are loaded')
+
     logger.info('Preparing data sets...')
+    features.set_index('client_id', inplace=True)
+
     train = load_train()
     test = load_test()
     indices_train = train.index
@@ -107,9 +124,9 @@ def main():
     # y_valid = make_z(treatment_valid, target_valid)
     logger.info('Data sets prepared')
 
-    clf = LGBMClassifier(
+    clf_ = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=N_ESTIMATORS,
+        n_estimators=500,
         num_leaves=50,
         max_depth=4,
         learning_rate=0.1,
@@ -120,7 +137,7 @@ def main():
     )
 
     logger.info('Build model for learn data set...')
-    clf = uplift_fit(clf, X_learn, treatment_learn, target_learn)
+    clf = uplift_fit(clf_, X_learn, treatment_learn, target_learn)
     learn_pred = uplift_predict(clf, X_learn)
     learn_scores = uplift_metrics(learn_pred, treatment_learn, target_learn)
     valid_pred = uplift_predict(clf, X_valid)
@@ -129,14 +146,14 @@ def main():
     logger.info(f'Valid scores: {valid_scores}')
 
     logging.info('Build model for full train data set...')
-    clf = uplift_fit(clf, X_train, treatment_train, target_train)
+    clf = uplift_fit(clf_, X_train, treatment_train, target_train)
     train_pred = uplift_predict(clf, X_train)
     train_scores = uplift_metrics(train_pred, treatment_train, target_train)
     logger.info(f'Train scores: {train_scores}')
     test_pred = uplift_predict(clf, X_test)
 
     logger.info('Saving submission...')
-    save_submission(indices_test, test_pred, 'submission_.csv')
+    save_submission(indices_test, test_pred, 'submission_product_features_lgbm.csv')
     logger.info('Submission is ready')
 
 if __name__ == '__main__':
