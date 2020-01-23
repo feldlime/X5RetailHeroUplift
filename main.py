@@ -1,8 +1,10 @@
 import logging
 import pickle
 from datetime import timedelta
+from os.path import join as pjoin
 
 import pandas as pd
+import sys
 from sklearn.model_selection import train_test_split
 from lightgbm import LGBMClassifier
 
@@ -18,9 +20,8 @@ from load_and_prepare import (
 )
 from models.fit_predict import uplift_fit, uplift_predict
 from models.metrics import uplift_metrics
-from models.utils import make_z
-from utils import save_submission
-from config import RANDOM_STATE, N_ESTIMATORS
+from config import RANDOM_STATE, SUBMISSIONS_PATH
+from models.utils import get_feature_importances
 
 log_format = '[%(asctime)s] %(name)-25s %(levelname)-8s %(message)s'
 logging.basicConfig(
@@ -78,6 +79,12 @@ def prepare_features() -> pd.DataFrame:
 
     return features
 
+
+def save_submission(indices_test, test_pred, filename):
+    df_submission = pd.DataFrame({'uplift': test_pred}, index=indices_test)
+    df_submission.to_csv(pjoin(SUBMISSIONS_PATH, filename))
+
+
 def main():
     # features = prepare_features()
     #
@@ -85,7 +92,7 @@ def main():
     # with open('features.pkl', 'wb') as f:
     #     pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
     # logger.info('Features are saved')
-    #
+
     logger.info('Loading features...')
     with open('features.pkl', 'rb') as f:
         features = pickle.load(f)
@@ -110,7 +117,7 @@ def main():
     indices_learn, indices_valid = train_test_split(
         train.index,
         test_size=0.3,
-        random_state=RANDOM_STATE,
+        random_state=RANDOM_STATE + 1,
     )
 
     X_learn = features.loc[indices_learn, :]
@@ -126,10 +133,11 @@ def main():
 
     clf_ = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=500,
-        num_leaves=50,
-        max_depth=4,
-        learning_rate=0.1,
+        n_estimators=2000,
+        num_leaves=30,
+        max_depth=5,
+        # reg_lambda=1,
+        # learning_rate=0.1,
         random_state=RANDOM_STATE,
         n_jobs=-3,
         bagging_freq=1,
@@ -145,6 +153,9 @@ def main():
     logger.info(f'Learn scores: {learn_scores}')
     logger.info(f'Valid scores: {valid_scores}')
 
+    feature_importances = get_feature_importances(clf, features.columns)
+    print(feature_importances.head(15), file=sys.stderr)
+
     logging.info('Build model for full train data set...')
     clf = uplift_fit(clf_, X_train, treatment_train, target_train)
     train_pred = uplift_predict(clf, X_train)
@@ -153,8 +164,9 @@ def main():
     test_pred = uplift_predict(clf, X_test)
 
     logger.info('Saving submission...')
-    save_submission(indices_test, test_pred, 'submission_product_features_lgbm.csv')
+    save_submission(indices_test, test_pred, 'submission_updated_features.csv')
     logger.info('Submission is ready')
+
 
 if __name__ == '__main__':
     main()
