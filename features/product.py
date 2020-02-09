@@ -4,12 +4,11 @@ import logging
 import numpy as np
 import pandas as pd
 import time
-from scipy import sparse
 
 from implicit.als import AlternatingLeastSquares
 
 from config import RANDOM_STATE, N_ALS_ITERATIONS
-from features.utils import drop_column_multi_index_inplace
+from features.utils import drop_column_multi_index_inplace, make_count_csr
 
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -137,26 +136,8 @@ def make_latent_feature(
 
     )
     np.random.seed(RANDOM_STATE)
-    model.fit(csr)
+    model.fit(csr.T)
 
     return model.user_factors
-
-
-def make_count_csr(
-        df: pd.DataFrame,
-        value_col: str,
-        col_index_col: str = 'client_id',
-) -> sparse.csr_matrix:
-    coo = sparse.coo_matrix(
-        (
-            np.ones(len(df)),
-            (
-                df[value_col].values,
-                df[col_index_col].values
-            )
-        )
-    )
-    csr = coo.tocsr(copy=False)
-    return csr
 
 

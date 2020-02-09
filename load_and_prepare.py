@@ -34,7 +34,7 @@ def prepare_products() -> Tuple[pd.DataFrame, LabelEncoder]:
     logger.info('Preparing products')
     products = load_products()
     product_encoder = LabelEncoder()
-    products['product_id'] = product_encoder.\
+    products['product_id'] = product_encoder. \
         fit_transform(products['product_id'])
 
     products = products.fillna(-1)
@@ -59,8 +59,8 @@ def load_purchases() -> pd.DataFrame:
 
 
 def prepare_purchases(
-    client_encoder: LabelEncoder,
-    product_encoder: LabelEncoder,
+        client_encoder: LabelEncoder,
+        product_encoder: LabelEncoder,
 ) -> pd.DataFrame:
     logger.info('Preparing purchases...')
     purchases = load_purchases()
@@ -73,7 +73,7 @@ def prepare_purchases(
     purchases['client_id'] = client_encoder.transform(purchases['client_id'])
     purchases['product_id'] = product_encoder.transform(purchases['product_id'])
     for col in ['transaction_id', 'store_id']:
-        purchases[col] = LabelEncoder().\
+        purchases[col] = LabelEncoder(). \
             fit_transform(purchases[col].fillna(-1).astype(str))
 
     logger.info('Date and time conversion...')
