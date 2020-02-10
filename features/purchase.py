@@ -30,6 +30,10 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     purchase_features = make_really_purchase_features(purchases)
     logger.info('Really purchase features are created')
 
+    logger.info('Creating small product features...')
+    product_features = make_small_product_features(purchases)
+    logger.info('Small product features are created')
+
     logger.info('Preparing orders table...')
 
     orders = purchases.reindex(columns=['client_id'] + ORDER_COLUMNS)
@@ -44,10 +48,6 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     logger.info('Creating time features...')
     time_features = make_time_features(orders)
     logger.info('Time features are created')
-
-    logger.info('Creating small product features...')
-    product_features = make_small_product_features(purchases)
-    logger.info('Small product features are created')
 
     logger.info('Creating store features...')
     store_features = make_store_features(orders)
@@ -78,6 +78,16 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
+    cl_gb = purchases.groupby('client_id')
+    simple_features = cl_gb.agg(
+        {
+            'trn_sum_from_iss': ['median'],  # median product price
+            'product_id': ['count', 'nunique'],
+        }
+    )
+    drop_column_multi_index_inplace(simple_features)
+    simple_features.reset_index(inplace=True)
+
     p_gb = purchases.groupby(['client_id', 'transaction_id'])
     purchase_agg = p_gb.agg(
         {
@@ -89,16 +99,21 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     drop_column_multi_index_inplace(purchase_agg)
     purchase_agg.reset_index(inplace=True)
     o_gb = purchase_agg.groupby('client_id')
-    features = o_gb.agg(
+    complex_features = o_gb.agg(
         {
             'product_id_count': ['mean'],  # mean products in order
             'product_quantity_max': ['mean'],  # mean max number of one product
             'purchase_sum_first': ['median'],
         }
     )
-    drop_column_multi_index_inplace(features)
-    features.reset_index(inplace=True)
+    drop_column_multi_index_inplace(complex_features)
+    complex_features.reset_index(inplace=True)
 
+    features = pd.merge(
+        simple_features,
+        complex_features,
+        on='client_id'
+    )
     return features
 
 
@@ -115,8 +130,6 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
             'express_points_spent': ['sum', 'min', 'median'],
             'purchase_sum': ['sum', 'max', 'median'],
             'store_id': ['nunique'],  # number of unique stores
-            'trn_sum_from_iss': ['median'],  # median product price
-            'product_id': ['count', 'nunique'],
         }
 
     for points_type in ('regular', 'express'):
@@ -133,15 +146,15 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
-    orders['weekday'] = orders['transaction_datetime'].dt.dayofweek
+    orders['weekday'] = orders['datetime'].dt.dayofweek
 
-    time_bins = [0, 6, 11, 18, 24]
-    time_lables = ['Night', 'Morning', 'Afternoon', 'Evening']
+    time_bins = [-1, 6, 11, 18, 24]
+    time_labels = ['Night', 'Morning', 'Afternoon', 'Evening']
     orders['part_of_day'] = pd.cut(
-        orders['transaction_datetime'].dt.hour,
+        orders['datetime'].dt.hour,
         bins=time_bins,
-        labels=time_lables,
-    )
+        labels=time_labels,
+    ).astype(str)
 
     orders['time_part'] = orders['weekday'].astype(str) + orders['part_of_day']
 
@@ -157,7 +170,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
 
     time_part_count = make_count_csr(orders, 'time_part', 'client_id')
 
-    time_part_count = pd.DataFrame(time_part_count, columns=columns)
+    time_part_count = pd.DataFrame(time_part_count.toarray(), columns=columns)
     time_part_count['client_id'] = client_ids
 
     time_part_sum = make_sum_csr(
@@ -167,7 +180,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         col_index_col='client_id',
     )
 
-    time_part_sum = pd.DataFrame(time_part_sum, columns=columns)
+    time_part_sum = pd.DataFrame(time_part_sum.toarray(), columns=columns)
     time_part_sum['client_id'] = client_ids
 
     time_part_features = pd.merge(
