@@ -31,7 +31,7 @@ def load_products() -> pd.DataFrame:
 
 
 def prepare_products() -> Tuple[pd.DataFrame, LabelEncoder]:
-    logger.info('Preparing products')
+    logger.info('Preparing products...')
     products = load_products()
     product_encoder = LabelEncoder()
     products['product_id'] = product_encoder. \
