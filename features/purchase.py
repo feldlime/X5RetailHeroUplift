@@ -53,6 +53,10 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     store_features = make_store_features(orders)
     logger.info('Store features are created')
 
+    logger.info('Creating order interval features...')
+    order_interval_features = make_order_interval_features(orders)
+    logger.info('Order interval features are created')
+
     features = (
         purchase_features
         .merge(
@@ -69,6 +73,10 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         )
         .merge(
             store_features,
+            on='client_id'
+        )
+        .merge(
+            order_interval_features,
             on='client_id'
         )
     )
@@ -225,5 +233,37 @@ def make_store_features(orders: pd.DataFrame) -> pd.DataFrame:
 
     drop_column_multi_index_inplace(features)
     features.reset_index(inplace=True)
+
+    return features
+
+
+def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
+    orders = orders.sort_values(['client_id', 'datetime'])
+
+    last_order_client = orders['client_id'].shift(1)
+    is_same_client = last_order_client == orders['client_id']
+    orders['last_order_datetime'] = orders['datetime'].shift(1)
+
+    orders = orders.loc[is_same_client]
+    orders['days_from_last_order'] = (
+        orders['datetime'] - orders['last_order_datetime']
+    )\
+    .dt.total_seconds() / SECONDS_IN_DAY
+
+    cl_gb = orders.groupby('client_id')
+    features = cl_gb.agg(
+        {
+            'days_from_last_order': ['mean', 'median', 'std']
+        }
+    )
+    drop_column_multi_index_inplace(features)
+    features.reset_index(inplace=True)
+
+    features = pd.merge(
+        orders.reindex(columns=['client_id']),
+        features,
+        on='client_id',
+        how='left',
+    ).fillna(-3)
 
     return features

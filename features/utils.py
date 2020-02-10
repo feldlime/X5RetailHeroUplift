@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
+SECONDS_IN_DAY = 60 * 60 * 24
+
 
 def drop_column_multi_index_inplace(df: pd.DataFrame) -> None:
     df.columns = ['_'.join(t) for t in df.columns]
