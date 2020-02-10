@@ -133,7 +133,7 @@ def main():
 
     clf_ = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=2000,
+        n_estimators=5000,
         num_leaves=30,
         max_depth=5,
         # reg_lambda=1,
