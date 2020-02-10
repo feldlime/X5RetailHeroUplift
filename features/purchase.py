@@ -30,7 +30,7 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
 
     logger.info('Creating purchase features...')
 
-    n_clients = purchases['client_id']
+    n_clients = purchases['client_id'].nunique()
 
     logger.info('Creating really purchase features...')
     purchase_features = make_really_purchase_features(purchases)
@@ -87,7 +87,7 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         )
     )
 
-    assert len(features) != n_clients, \
+    assert len(features) == n_clients, \
         f'n_clients = {n_clients} but len(features) = {len(features)}'
 
     logger.info(f'Purchase features are created. Shape = {features.shape}')
@@ -110,7 +110,6 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         {
             'product_id': ['count'],
             'product_quantity': ['max'],
-            'purchase_sum': ['first']
         }
     )
     drop_column_multi_index_inplace(purchase_agg)
@@ -120,7 +119,6 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         {
             'product_id_count': ['mean'],  # mean products in order
             'product_quantity_max': ['mean'],  # mean max number of one product
-            'purchase_sum_first': ['median'],
         }
     )
     drop_column_multi_index_inplace(complex_features)
@@ -253,11 +251,11 @@ def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
     is_same_client = last_order_client == orders['client_id']
     orders['last_order_datetime'] = orders['datetime'].shift(1)
 
-    orders = orders.loc[is_same_client]
-    orders['days_from_last_order'] = (
-        orders['datetime'] - orders['last_order_datetime']
-    )\
-    .dt.total_seconds() / SECONDS_IN_DAY
+    orders['days_from_last_order'] = np.nan
+    orders.loc[is_same_client, 'days_from_last_order'] = (
+        orders.loc[is_same_client, 'datetime'] -
+        orders.loc[is_same_client, 'last_order_datetime']
+    ).dt.total_seconds() / SECONDS_IN_DAY
 
     cl_gb = orders.groupby('client_id')
     features = cl_gb.agg(
@@ -267,12 +265,6 @@ def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
     )
     drop_column_multi_index_inplace(features)
     features.reset_index(inplace=True)
-
-    features = pd.merge(
-        orders.reindex(columns=['client_id']),
-        features,
-        on='client_id',
-        how='left',
-    ).fillna(-3)
+    features.fillna(-3, inplace=True)
 
     return features
