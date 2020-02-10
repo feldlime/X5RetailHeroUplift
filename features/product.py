@@ -59,13 +59,14 @@ def make_product_features(
     usual_features = make_usual_features(purchases_products)
 
     logger.info('Combining features')
-    product_features = pd.merge(
+    features = pd.merge(
         latent_features,
         usual_features,
         on='client_id'
     )
 
-    return product_features
+    logger.info(f'Product features are created. Shape = {features.shape}')
+    return features
 
 
 def make_usual_features(

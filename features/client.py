@@ -2,6 +2,8 @@ import logging
 
 import pandas as pd
 
+from .utils import SECONDS_IN_DAY
+
 logger = logging.getLogger(__name__)
 
 INTERVALS = ['year', 'month', 'day', 'dayofweek', 'dayofyear', 'hour']
@@ -11,16 +13,16 @@ def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
 
     logger.info('Preparing features')
     min_datetime = clients['first_issue_date'].min()
-    seconds_in_day = 60 * 60 * 24
+
     days_from_min_to_issue = (
             (clients['first_issue_date'] - min_datetime)
             .dt.total_seconds() /
-            seconds_in_day
+            SECONDS_IN_DAY
     ).values
     days_from_min_to_redeem = (
             (clients['first_redeem_date'] - min_datetime)
             .dt.total_seconds() /
-            seconds_in_day
+            SECONDS_IN_DAY
     ).values
 
     age = clients['age'].values
@@ -47,4 +49,5 @@ def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
 
     features = features.fillna(-1)
 
+    logger.info(f'Client features are created. Shape = {features.shape}')
     return features

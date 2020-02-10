@@ -4,8 +4,12 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
-from features.utils import drop_column_multi_index_inplace, make_count_csr, \
-    make_sum_csr
+from features.utils import (
+    drop_column_multi_index_inplace,
+    make_count_csr,
+    make_sum_csr,
+    SECONDS_IN_DAY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +29,8 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     # Purchase is one row in bill. Order is a whole bill.
 
     logger.info('Creating purchase features...')
+
+    n_clients = purchases['client_id']
 
     logger.info('Creating really purchase features...')
     purchase_features = make_really_purchase_features(purchases)
@@ -81,7 +87,10 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         )
     )
 
-    logger.info('Purchase features are created')
+    assert len(features) != n_clients, \
+        f'n_clients = {n_clients} but len(features) = {len(features)}'
+
+    logger.info(f'Purchase features are created. Shape = {features.shape}')
     return features
 
 
