@@ -117,8 +117,8 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     o_gb = purchase_agg.groupby('client_id')
     complex_features = o_gb.agg(
         {
-            'product_id_count': ['mean'],  # mean products in order
-            'product_quantity_max': ['mean'],  # mean max number of one product
+            'product_id_count': ['mean', 'median'],  # mean products in order
+            'product_quantity_max': ['mean', 'median'],  # mean max number of one product
         }
     )
     drop_column_multi_index_inplace(complex_features)
@@ -236,7 +236,7 @@ def make_store_features(orders: pd.DataFrame) -> pd.DataFrame:
     store_agg.reset_index(inplace=True)
 
     cl_gb = store_agg.groupby(['client_id'])
-    features = cl_gb.agg({'transaction_id_count': ['max']})
+    features = cl_gb.agg({'transaction_id_count': ['max', 'mean', 'median']})
 
     drop_column_multi_index_inplace(features)
     features.reset_index(inplace=True)
@@ -260,7 +260,7 @@ def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
     cl_gb = orders.groupby('client_id')
     features = cl_gb.agg(
         {
-            'days_from_last_order': ['mean', 'median', 'std']
+            'days_from_last_order': ['mean', 'median', 'std', 'min', 'max']
         }
     )
     drop_column_multi_index_inplace(features)
