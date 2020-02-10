@@ -4,27 +4,37 @@ import logging
 import numpy as np
 import pandas as pd
 import time
-from scipy import sparse
 
 from implicit.als import AlternatingLeastSquares
 
 from config import RANDOM_STATE, N_ALS_ITERATIONS
-from features.utils import drop_column_multi_index_inplace
+from features.utils import drop_column_multi_index_inplace, make_count_csr
 
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
 logger = logging.getLogger(__name__)
+#
+# N_FACTORS = {
+#     'product_id': 32,
+#     'level_1': 2,
+#     'level_2': 3,
+#     'level_3': 4,
+#     'level_4': 5,
+#     'segment_id': 4,
+#     'brand_id': 10,
+#     'vendor_id': 10,
+# }
 
 N_FACTORS = {
-    'product_id': 32,
+    'product_id': 64,
     'level_1': 2,
-    'level_2': 3,
-    'level_3': 4,
-    'level_4': 5,
-    'segment_id': 4,
-    'brand_id': 10,
-    'vendor_id': 10,
+    'level_2': 4,
+    'level_3': 8,
+    'level_4': 8,
+    'segment_id': 8,
+    'brand_id': 8,
+    'vendor_id': 8,
 }
 
 N_ITERATIONS = N_ALS_ITERATIONS
@@ -48,6 +58,7 @@ def make_product_features(
         products,
         on='product_id',
     )
+    logger.info('Purchases-products matrix is ready')
 
     # Aliases only
     del purchases
@@ -60,13 +71,14 @@ def make_product_features(
     usual_features = make_usual_features(purchases_products)
 
     logger.info('Combining features')
-    product_features = pd.merge(
+    features = pd.merge(
         latent_features,
         usual_features,
         on='client_id'
     )
 
-    return product_features
+    logger.info(f'Product features are created. Shape = {features.shape}')
+    return features
 
 
 def make_usual_features(
@@ -133,30 +145,12 @@ def make_latent_feature(
         dtype=np.float32,
         iterations=iterations,
         regularization=0.1,
-        use_gpu=True if n_factors >= 32 else False,
+        use_gpu=False,  # True if n_factors >= 32 else False,
 
     )
     np.random.seed(RANDOM_STATE)
-    model.fit(csr)
+    model.fit(csr.T)
 
     return model.user_factors
-
-
-def make_count_csr(
-        df: pd.DataFrame,
-        value_col: str,
-        col_index_col: str = 'client_id',
-) -> sparse.csr_matrix:
-    coo = sparse.coo_matrix(
-        (
-            np.ones(len(df)),
-            (
-                df[value_col].values,
-                df[col_index_col].values
-            )
-        )
-    )
-    csr = coo.tocsr(copy=False)
-    return csr
 
 

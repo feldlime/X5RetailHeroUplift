@@ -16,3 +16,5 @@ submissions
 *features*.csv
 *.7z
 *.pkl
+
+.DS_Store

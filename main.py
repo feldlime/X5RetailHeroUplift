@@ -133,7 +133,7 @@ def main():
 
     clf_ = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=2000,
+        n_estimators=5000,
         num_leaves=30,
         max_depth=5,
         # reg_lambda=1,
@@ -146,11 +146,12 @@ def main():
 
     logger.info('Build model for learn data set...')
     clf = uplift_fit(clf_, X_learn, treatment_learn, target_learn)
+    logger.info('Model is ready')
     learn_pred = uplift_predict(clf, X_learn)
     learn_scores = uplift_metrics(learn_pred, treatment_learn, target_learn)
+    logger.info(f'Learn scores: {learn_scores}')
     valid_pred = uplift_predict(clf, X_valid)
     valid_scores = uplift_metrics(valid_pred, treatment_valid, target_valid)
-    logger.info(f'Learn scores: {learn_scores}')
     logger.info(f'Valid scores: {valid_scores}')
 
     feature_importances = get_feature_importances(clf, features.columns)
@@ -158,6 +159,7 @@ def main():
 
     logging.info('Build model for full train data set...')
     clf = uplift_fit(clf_, X_train, treatment_train, target_train)
+    logger.info('Model is ready')
     train_pred = uplift_predict(clf, X_train)
     train_scores = uplift_metrics(train_pred, treatment_train, target_train)
     logger.info(f'Train scores: {train_scores}')
