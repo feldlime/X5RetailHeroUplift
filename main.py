@@ -139,7 +139,7 @@ def main():
         # reg_lambda=1,
         # learning_rate=0.1,
         random_state=RANDOM_STATE,
-        n_jobs=-3,
+        n_jobs=-1,
         bagging_freq=1,
         bagging_fraction=0.5,
     )
