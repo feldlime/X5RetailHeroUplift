@@ -12,28 +12,28 @@ os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
 logger = logging.getLogger(__name__)
-#
-# N_FACTORS = {
-#     'product_id': 32,
-#     'level_1': 2,
-#     'level_2': 3,
-#     'level_3': 4,
-#     'level_4': 5,
-#     'segment_id': 4,
-#     'brand_id': 10,
-#     'vendor_id': 10,
-# }
 
 N_FACTORS = {
-    'product_id': 64,
+    'product_id': 32,
     'level_1': 2,
-    'level_2': 4,
-    'level_3': 8,
-    'level_4': 8,
-    'segment_id': 8,
-    'brand_id': 8,
-    'vendor_id': 8,
+    'level_2': 3,
+    'level_3': 4,
+    'level_4': 5,
+    'segment_id': 4,
+    'brand_id': 10,
+    'vendor_id': 10,
 }
+#
+# N_FACTORS = {
+#     'product_id': 64,
+#     'level_1': 2,
+#     'level_2': 4,
+#     'level_3': 8,
+#     'level_4': 8,
+#     'segment_id': 8,
+#     'brand_id': 8,
+#     'vendor_id': 8,
+# }
 
 N_ITERATIONS = N_ALS_ITERATIONS
 
