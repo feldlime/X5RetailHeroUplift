@@ -10,7 +10,10 @@ from lightgbm import LGBMClassifier
 
 from features.client import make_client_features
 from features.product import make_product_features
-from features.purchase import make_purchase_features
+from features.purchase import (
+    make_purchase_features,
+    make_purchase_features_for_last_days,
+)
 from load_and_prepare import (
     prepare_clients,
     prepare_products,
@@ -41,13 +44,9 @@ def prepare_features() -> pd.DataFrame:
 
     logger.info('Preparing features...')
     purchase_features = make_purchase_features(purchases)
-
-    # Last month purchases
-    max_datetime = purchases['datetime'].max()
-    cutoff = max_datetime - timedelta(days=30)
-    purchases_lm = purchases[purchases['datetime'] >= cutoff]
-    purchase_lm_features = make_purchase_features(purchases_lm)
-    del purchases_lm
+    purchase_features_15d = make_purchase_features_for_last_days(purchases, 15)
+    purchase_features_30d = make_purchase_features_for_last_days(purchases, 30)
+    purchase_features_60d = make_purchase_features_for_last_days(purchases, 60)
 
     purchases_ids = purchases.reindex(columns=['client_id', 'product_id'])
     del purchases
@@ -60,12 +59,31 @@ def prepare_features() -> pd.DataFrame:
     features = (
         client_features
             .merge(purchase_features, on='client_id', how='left')
-            .merge(purchase_lm_features, on='client_id', how='left')
+            .merge(
+                purchase_features_15d,
+                on='client_id',
+                how='left',
+                suffixes=('', '_15d'),
+            )
+            .merge(
+                purchase_features_30d,
+                on='client_id',
+                how='left',
+                suffixes=('', '_30d'),
+            )
+            .merge(
+                purchase_features_60d,
+                on='client_id',
+                how='left',
+                suffixes=('', '_60d'),
+            )
             .merge(product_features, on='client_id', how='left')
     )
     del client_features
     del purchase_features
-    del purchase_lm_features
+    del purchase_features_15d
+    del purchase_features_30d
+    del purchase_features_60d
     del product_features
 
     # TODO: normal fill na

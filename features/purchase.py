@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 import pandas as pd
 import numpy as np
@@ -25,6 +26,17 @@ ORDER_COLUMNS = [
     'purchase_sum',
     'store_id',
 ]
+
+
+def make_purchase_features_for_last_days(
+    purchases: pd.DataFrame,
+    period_in_days: int
+) -> pd.DataFrame:
+    max_datetime = purchases['datetime'].max()
+    cutoff = max_datetime - timedelta(days=period_in_days)
+    purchases_last = purchases[purchases['datetime'] >= cutoff]
+    purchases_last_features = make_purchase_features(purchases_last)
+    return purchases_last_features
 
 
 def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
@@ -158,7 +170,7 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
     features['days_from_last_order'] = (
         most_recent_order_datetime - features['datetime_max']
     ).dt.total_seconds() // SECONDS_IN_DAY
-    features.drop(columns=['datetime_max'])
+    features.drop(columns=['datetime_max'], inplace=True)
 
     return features
 
