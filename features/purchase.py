@@ -183,7 +183,11 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
     # np.unique returns sorted array
     client_ids = np.unique(orders['client_id'].values)
 
-    time_part_count = make_count_csr(orders, 'time_part', 'client_id')
+    time_part_count = make_count_csr(
+        orders,
+        index_col='client_id',
+        value_col='time_part',
+    )
 
     time_part_count = pd.DataFrame(time_part_count.toarray(), columns=columns)
     time_part_count['client_id'] = client_ids

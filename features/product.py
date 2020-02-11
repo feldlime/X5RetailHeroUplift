@@ -5,10 +5,8 @@ import numpy as np
 import pandas as pd
 import time
 
-from implicit.als import AlternatingLeastSquares
-
-from config import RANDOM_STATE, N_ALS_ITERATIONS
-from features.utils import drop_column_multi_index_inplace, make_count_csr
+from config import N_ALS_ITERATIONS
+from features.utils import drop_column_multi_index_inplace, make_latent_feature
 
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -110,9 +108,10 @@ def make_latent_features(
         latent_feature_matrices.append(
             make_latent_feature(
                 purchases_products,
-                col,
-                n_factors,
-                N_ITERATIONS,
+                index_col='client_id',
+                value_col=col,
+                n_factors=n_factors,
+                n_iterations=N_ITERATIONS,
             )
         )
 
@@ -130,27 +129,3 @@ def make_latent_features(
     latent_features.insert(0, 'client_id', np.arange(latent_features.shape[0]))
 
     return latent_features
-
-
-def make_latent_feature(
-    df: pd.DataFrame,
-    col: str,
-    n_factors: int,
-    iterations: int,
-):
-    csr = make_count_csr(df, col)
-
-    model = AlternatingLeastSquares(
-        factors=n_factors,
-        dtype=np.float32,
-        iterations=iterations,
-        regularization=0.1,
-        use_gpu=False,  # True if n_factors >= 32 else False,
-
-    )
-    np.random.seed(RANDOM_STATE)
-    model.fit(csr.T)
-
-    return model.user_factors
-
-
