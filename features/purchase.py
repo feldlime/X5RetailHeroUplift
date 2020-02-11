@@ -4,11 +4,13 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
+from config import N_ALS_ITERATIONS
 from features.utils import (
     drop_column_multi_index_inplace,
     make_count_csr,
     make_sum_csr,
     SECONDS_IN_DAY,
+    make_latent_feature,
 )
 
 logger = logging.getLogger(__name__)
@@ -240,12 +242,45 @@ def make_store_features(orders: pd.DataFrame) -> pd.DataFrame:
     store_agg.reset_index(inplace=True)
 
     cl_gb = store_agg.groupby(['client_id'])
-    features = cl_gb.agg({'transaction_id_count': ['max', 'mean', 'median']})
+    simple_features = cl_gb.agg(
+        {
+            'transaction_id_count': ['max', 'mean', 'median']
+        }
+    )
 
-    drop_column_multi_index_inplace(features)
-    features.reset_index(inplace=True)
+    drop_column_multi_index_inplace(simple_features)
+    simple_features.reset_index(inplace=True)
+
+    latent_features = make_latent_store_features(orders)
+
+    features = pd.merge(
+        simple_features,
+        latent_features,
+        on='client_id'
+    )
 
     return features
+
+
+def make_latent_store_features(orders: pd.DataFrame) -> pd.DataFrame:
+    n_factors = 8
+    latent_feature_names = [f'store_id_f{i + 1}' for i in range(n_factors)]
+
+    latent_feature_matrix = make_latent_feature(
+        orders,
+        index_col='client_id',
+        value_col='store_id',
+        n_factors=n_factors,
+        n_iterations=N_ALS_ITERATIONS,
+    )
+
+    latent_features = pd.DataFrame(
+        latent_feature_matrix,
+        columns=latent_feature_names
+    )
+    latent_features.insert(0, 'client_id', np.arange(latent_features.shape[0]))
+
+    return latent_features
 
 
 def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
