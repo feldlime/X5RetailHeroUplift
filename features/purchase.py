@@ -67,26 +67,11 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
 
     features = (
         purchase_features
-        .merge(
-            order_features,
-            on='client_id'
-        )
-        .merge(
-            time_features,
-            on='client_id'
-        )
-        .merge(
-            product_features,
-            on='client_id'
-        )
-        .merge(
-            store_features,
-            on='client_id'
-        )
-        .merge(
-            order_interval_features,
-            on='client_id'
-        )
+        .merge(order_features, on='client_id')
+        .merge(time_features, on='client_id')
+        .merge(product_features, on='client_id')
+        .merge(store_features, on='client_id')
+        .merge(order_interval_features, on='client_id')
     )
 
     assert len(features) == n_clients, \
@@ -94,6 +79,11 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
 
     features['days_from_last_order_share'] = \
         features['days_from_last_order'] / features['orders_interval_median']
+
+    features['most_popular_store_share'] = (
+        features['store_transaction_id_count_max'] /
+        features['transaction_id_count']
+    )
 
     logger.info(f'Purchase features are created. Shape = {features.shape}')
     return features
@@ -261,6 +251,13 @@ def make_store_features(orders: pd.DataFrame) -> pd.DataFrame:
 
     drop_column_multi_index_inplace(simple_features)
     simple_features.reset_index(inplace=True)
+    simple_features.columns = (
+        ['client_id'] +
+        [
+            f'store_{col}'
+            for col in simple_features.columns[1:]
+        ]
+    )
 
     latent_features = make_latent_store_features(orders)
 
