@@ -92,6 +92,9 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     assert len(features) == n_clients, \
         f'n_clients = {n_clients} but len(features) = {len(features)}'
 
+    features['days_from_last_order_share'] = \
+        features['days_from_last_order'] / features['orders_interval_median']
+
     logger.info(f'Purchase features are created. Shape = {features.shape}')
     return features
 
@@ -147,6 +150,7 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
             'express_points_spent': ['sum', 'min', 'median'],
             'purchase_sum': ['sum', 'max', 'median'],
             'store_id': ['nunique'],  # number of unique stores
+            'datetime': ['max'],  # datetime of last order
         }
 
     for points_type in ('regular', 'express'):
@@ -159,6 +163,13 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
     features = o_gb.agg(agg_dict)
     drop_column_multi_index_inplace(features)
     features.reset_index(inplace=True)
+
+    most_recent_order_datetime = orders['datetime'].max()
+    features['days_from_last_order'] = (
+        most_recent_order_datetime - features['datetime_max']
+    ).dt.total_seconds() // SECONDS_IN_DAY
+    features.drop(columns=['datetime_max'])
+
     return features
 
 
@@ -290,16 +301,23 @@ def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
     is_same_client = last_order_client == orders['client_id']
     orders['last_order_datetime'] = orders['datetime'].shift(1)
 
-    orders['days_from_last_order'] = np.nan
-    orders.loc[is_same_client, 'days_from_last_order'] = (
+    orders['orders_interval'] = np.nan
+    orders.loc[is_same_client, 'orders_interval'] = (
         orders.loc[is_same_client, 'datetime'] -
         orders.loc[is_same_client, 'last_order_datetime']
     ).dt.total_seconds() / SECONDS_IN_DAY
 
-    cl_gb = orders.groupby('client_id')
+    cl_gb = orders.groupby('client_id', sort=False)
     features = cl_gb.agg(
         {
-            'days_from_last_order': ['mean', 'median', 'std', 'min', 'max']
+            'orders_interval': [
+                'mean',  # mean interval between orders
+                'median',
+                'std',  # constancy of orders
+                'min',
+                'max',
+                'last',  # interval between last 2 orders
+            ]
         }
     )
     drop_column_multi_index_inplace(features)
