@@ -96,7 +96,10 @@ def main():
     logger.info('Loading features...')
     with open('features.pkl', 'rb') as f:
         features = pickle.load(f)
+        features: pd.DataFrame = pickle.load(f)
     logger.info('Features are loaded')
+
+    logging.info(f'Features shape: {features.shape}')
 
     logger.info('Preparing data sets...')
     features.set_index('client_id', inplace=True)
