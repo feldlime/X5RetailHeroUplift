@@ -30,13 +30,15 @@ ORDER_COLUMNS = [
 
 def make_purchase_features_for_last_days(
     purchases: pd.DataFrame,
-    period_in_days: int
+    n_days: int
 ) -> pd.DataFrame:
+    logger.info(f'Creating purchase features for last {n_days} days...')
     max_datetime = purchases['datetime'].max()
-    cutoff = max_datetime - timedelta(days=period_in_days)
+    cutoff = max_datetime - timedelta(days=n_days)
     purchases_last = purchases[purchases['datetime'] >= cutoff]
-    purchases_last_features = make_purchase_features(purchases_last)
-    return purchases_last_features
+    purchase_last_features = make_purchase_features(purchases_last)
+    logger.info(f'Purchase features for last {n_days} days are created')
+    return purchase_last_features
 
 
 def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
