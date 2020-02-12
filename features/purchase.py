@@ -202,7 +202,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         orders,
         index_col='client_id',
         value_col='time_part',
-    )
+    )[client_ids, :]  # drop empty rows
 
     time_part_count = pd.DataFrame(time_part_count.toarray(), columns=columns)
     time_part_count['client_id'] = client_ids
@@ -212,7 +212,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         value_col='time_part',
         col_to_sum='purchase_sum',
         col_index_col='client_id',
-    )
+    )[client_ids, :]  # drop empty rows
 
     time_part_sum = pd.DataFrame(time_part_sum.toarray(), columns=columns)
     time_part_sum['client_id'] = client_ids
