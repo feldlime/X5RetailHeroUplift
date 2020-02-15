@@ -1,14 +1,17 @@
 import logging
+from datetime import timedelta
 
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
+from config import N_ALS_ITERATIONS
 from features.utils import (
     drop_column_multi_index_inplace,
     make_count_csr,
     make_sum_csr,
     SECONDS_IN_DAY,
+    make_latent_feature,
 )
 
 logger = logging.getLogger(__name__)
@@ -23,6 +26,19 @@ ORDER_COLUMNS = [
     'purchase_sum',
     'store_id',
 ]
+
+
+def make_purchase_features_for_last_days(
+    purchases: pd.DataFrame,
+    n_days: int
+) -> pd.DataFrame:
+    logger.info(f'Creating purchase features for last {n_days} days...')
+    max_datetime = purchases['datetime'].max()
+    cutoff = max_datetime - timedelta(days=n_days)
+    purchases_last = purchases[purchases['datetime'] >= cutoff]
+    purchase_last_features = make_purchase_features(purchases_last)
+    logger.info(f'Purchase features for last {n_days} days are created')
+    return purchase_last_features
 
 
 def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
@@ -65,30 +81,23 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
 
     features = (
         purchase_features
-        .merge(
-            order_features,
-            on='client_id'
-        )
-        .merge(
-            time_features,
-            on='client_id'
-        )
-        .merge(
-            product_features,
-            on='client_id'
-        )
-        .merge(
-            store_features,
-            on='client_id'
-        )
-        .merge(
-            order_interval_features,
-            on='client_id'
-        )
+        .merge(order_features, on='client_id')
+        .merge(time_features, on='client_id')
+        .merge(product_features, on='client_id')
+        .merge(store_features, on='client_id')
+        .merge(order_interval_features, on='client_id')
     )
 
     assert len(features) == n_clients, \
         f'n_clients = {n_clients} but len(features) = {len(features)}'
+
+    features['days_from_last_order_share'] = \
+        features['days_from_last_order'] / features['orders_interval_median']
+
+    features['most_popular_store_share'] = (
+        features['store_transaction_id_count_max'] /
+        features['transaction_id_count']
+    )
 
     logger.info(f'Purchase features are created. Shape = {features.shape}')
     return features
@@ -145,6 +154,7 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
             'express_points_spent': ['sum', 'min', 'median'],
             'purchase_sum': ['sum', 'max', 'median'],
             'store_id': ['nunique'],  # number of unique stores
+            'datetime': ['max'],  # datetime of last order
         }
 
     for points_type in ('regular', 'express'):
@@ -157,6 +167,13 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
     features = o_gb.agg(agg_dict)
     drop_column_multi_index_inplace(features)
     features.reset_index(inplace=True)
+
+    most_recent_order_datetime = orders['datetime'].max()
+    features['days_from_last_order'] = (
+        most_recent_order_datetime - features['datetime_max']
+    ).dt.total_seconds() // SECONDS_IN_DAY
+    features.drop(columns=['datetime_max'], inplace=True)
+
     return features
 
 
@@ -183,7 +200,11 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
     # np.unique returns sorted array
     client_ids = np.unique(orders['client_id'].values)
 
-    time_part_count = make_count_csr(orders, 'time_part', 'client_id')
+    time_part_count = make_count_csr(
+        orders,
+        index_col='client_id',
+        value_col='time_part',
+    )[client_ids, :]  # drop empty rows
 
     time_part_count = pd.DataFrame(time_part_count.toarray(), columns=columns)
     time_part_count['client_id'] = client_ids
@@ -193,7 +214,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         value_col='time_part',
         col_to_sum='purchase_sum',
         col_index_col='client_id',
-    )
+    )[client_ids, :]  # drop empty rows
 
     time_part_sum = pd.DataFrame(time_part_sum.toarray(), columns=columns)
     time_part_sum['client_id'] = client_ids
@@ -236,12 +257,52 @@ def make_store_features(orders: pd.DataFrame) -> pd.DataFrame:
     store_agg.reset_index(inplace=True)
 
     cl_gb = store_agg.groupby(['client_id'])
-    features = cl_gb.agg({'transaction_id_count': ['max', 'mean', 'median']})
+    simple_features = cl_gb.agg(
+        {
+            'transaction_id_count': ['max', 'mean', 'median']
+        }
+    )
 
-    drop_column_multi_index_inplace(features)
-    features.reset_index(inplace=True)
+    drop_column_multi_index_inplace(simple_features)
+    simple_features.reset_index(inplace=True)
+    simple_features.columns = (
+        ['client_id'] +
+        [
+            f'store_{col}'
+            for col in simple_features.columns[1:]
+        ]
+    )
+
+    latent_features = make_latent_store_features(orders)
+
+    features = pd.merge(
+        simple_features,
+        latent_features,
+        on='client_id'
+    )
 
     return features
+
+
+def make_latent_store_features(orders: pd.DataFrame) -> pd.DataFrame:
+    n_factors = 8
+    latent_feature_names = [f'store_id_f{i + 1}' for i in range(n_factors)]
+
+    latent_feature_matrix = make_latent_feature(
+        orders,
+        index_col='client_id',
+        value_col='store_id',
+        n_factors=n_factors,
+        n_iterations=N_ALS_ITERATIONS,
+    )
+
+    latent_features = pd.DataFrame(
+        latent_feature_matrix,
+        columns=latent_feature_names
+    )
+    latent_features.insert(0, 'client_id', np.arange(latent_features.shape[0]))
+
+    return latent_features
 
 
 def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
@@ -251,16 +312,23 @@ def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
     is_same_client = last_order_client == orders['client_id']
     orders['last_order_datetime'] = orders['datetime'].shift(1)
 
-    orders['days_from_last_order'] = np.nan
-    orders.loc[is_same_client, 'days_from_last_order'] = (
+    orders['orders_interval'] = np.nan
+    orders.loc[is_same_client, 'orders_interval'] = (
         orders.loc[is_same_client, 'datetime'] -
         orders.loc[is_same_client, 'last_order_datetime']
     ).dt.total_seconds() / SECONDS_IN_DAY
 
-    cl_gb = orders.groupby('client_id')
+    cl_gb = orders.groupby('client_id', sort=False)
     features = cl_gb.agg(
         {
-            'days_from_last_order': ['mean', 'median', 'std', 'min', 'max']
+            'orders_interval': [
+                'mean',  # mean interval between orders
+                'median',
+                'std',  # constancy of orders
+                'min',
+                'max',
+                'last',  # interval between last 2 orders
+            ]
         }
     )
     drop_column_multi_index_inplace(features)
