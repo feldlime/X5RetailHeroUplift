@@ -27,6 +27,11 @@ ORDER_COLUMNS = [
     'store_id',
 ]
 
+FLOAT32_MAX = np.finfo(np.float32).max
+POINT_TYPES = ('regular', 'express')
+POINT_EVENT_TYPES = ('spent', 'received')
+WEEK_DAYS = list(range(0, 7))
+
 
 def make_purchase_features_for_last_days(
     purchases: pd.DataFrame,
@@ -160,14 +165,11 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
         }
 
     # is regular/express points spent/received
-    for points_type in ('regular', 'express'):
-        for event_type in ('spent', 'received'):
+    for points_type in POINT_TYPES:
+        for event_type in POINT_EVENT_TYPES:
             col_name = f'{points_type}_points_{event_type}'
             new_col_name = f'is_{points_type}_points_{event_type}'
-            if event_type == 'spent':
-                orders[new_col_name] = (orders[col_name] < 0).astype(int)
-            else:
-                orders[new_col_name] = (orders[col_name] > 0).astype(int)
+            orders[new_col_name] = (orders[col_name] != 0).astype(int)
             agg_dict[new_col_name] = ['sum']
 
     features = o_gb.agg(agg_dict)
@@ -182,22 +184,22 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
 
     # TODO: check fillna and inf correct replace
     # proportion of regular/express points spent to all transactions
-    for points_type in ('regular', 'express'):
-        for event_type in ('spent', 'received'):
+    for points_type in POINT_TYPES:
+        for event_type in POINT_EVENT_TYPES:
             col_name = f'is_{points_type}_points_{event_type}_sum'
             new_col_name = f'proportion_count_{points_type}_points_{event_type}'
             features[new_col_name] = (
                     features[col_name] / features['transaction_id_count']
-            ).replace(np.inf, 1000)
+            )
 
     express_col = f'is_express_points_spent_sum'
     regular_col = f'is_regular_points_spent_sum'
     new_col_name = f'ratio_count_express_to_regular_points_spent'
     features[new_col_name] = (
             features[express_col] / features[regular_col]
-    ).replace(np.inf, 1000)
+    ).replace(np.inf, FLOAT32_MAX)
 
-    for points_type in ('regular', 'express'):
+    for points_type in POINT_TYPES:
         spent_col = f'is_{points_type}_points_spent_sum'
         received_col = f'is_{points_type}_points_received_sum'
         new_col_name = f'ratio_count_{points_type}_points_spent_to_received'
@@ -213,6 +215,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
 
     time_bins = [-1, 6, 11, 18, 24]
     time_labels = ['Night', 'Morning', 'Afternoon', 'Evening']
+    time_labels = ['0', '1', '2', '3']
     orders['part_of_day'] = pd.cut(
         orders['datetime'].dt.hour,
         bins=time_bins,
@@ -264,7 +267,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         col_name = f"{part_of_day}_count"
         ratio_col_name = f'ratio_{part_of_day}_purch_to_all'
         time_part_features[col_name] = 0
-        for weekday in range(0, 7):
+        for weekday in WEEK_DAYS:
             weekday_col_name = f"{weekday}{part_of_day}_count"
             time_part_features[col_name] += time_part_features[weekday_col_name]
             time_part_features['purch_count'] += time_part_features[
@@ -275,13 +278,13 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         ratio_col_name = f'ratio_{part_of_day}_purch_to_all'
         time_part_features[ratio_col_name] = time_part_features[col_name] / \
                                              time_part_features['purch_count']
-    for weekday in range(0, 7):
+    for weekday in WEEK_DAYS:
         col_name = f"{weekday}_count"
         time_part_features[col_name] = 0
         for part_of_day in time_labels:
             part_of_day_col = f'{weekday}{part_of_day}_count'
             time_part_features[col_name] += time_part_features[part_of_day_col]
-    for weekday in range(0, 7):
+    for weekday in WEEK_DAYS:
         col_name = f"{weekday}_count"
         ratio_col_name = f'ratio_{weekday}_purch_to_all'
         time_part_features[ratio_col_name] = time_part_features[col_name] / \
@@ -291,7 +294,7 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         # col_name = f"{part_of_day}_count"
         # ratio_col_name = f'ratio_{part_of_day}_purch_to_all'
         # time_part_features[col_name] = 0
-        for weekday in range(0, 7):
+        for weekday in WEEK_DAYS:
             col_name = f'{weekday}{part_of_day}_count'
             new_col_name = f"{weekday}{part_of_day}_count_ratio"
             time_part_features[new_col_name] = time_part_features[col_name] / \
