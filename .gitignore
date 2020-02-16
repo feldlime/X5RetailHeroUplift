@@ -18,3 +18,5 @@ submissions
 *.pkl
 
 .DS_Store
+
+venv
