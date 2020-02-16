@@ -186,6 +186,13 @@ def main():
     logger.info(f'Train scores: {train_scores}')
     test_pred = uplift_predict(clf, X_test)
 
+    feature_importances = get_feature_importances(clf, features.columns)
+    print(feature_importances.head(30), file=sys.stderr)
+
+    logger.info('Saving model...')
+    with open('model_20k_d6_15_30_60.pkl', 'wb') as f:
+        pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
+
     logger.info('Saving submission...')
     save_submission(indices_test, test_pred, 'submission_updated_features.csv')
     logger.info('Submission is ready')
