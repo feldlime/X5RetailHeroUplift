@@ -126,7 +126,7 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     simple_purchases = purchases.reindex(
         columns=['client_id', 'product_id', 'trn_sum_from_iss']
     )
-    prices_bounds = [0, 98, 195, 490, 950, 1900, 4400, 10**5]  # TODO: change last value to constant
+    prices_bounds = [0, 98, 195, 490, 950, 1900, 4400, FLOAT32_MAX]
     agg_dict = {}
     for i, lower_bound in enumerate(prices_bounds[:-1]):
         upper_bound = prices_bounds[i + 1]
@@ -209,7 +209,6 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
     ).dt.total_seconds() // SECONDS_IN_DAY
     features.drop(columns=['datetime_max'], inplace=True)
 
-    # TODO: check fillna and inf correct replace
     # proportion of regular/express points spent to all transactions
     for points_type in POINT_TYPES:
         for event_type in POINT_EVENT_TYPES:
