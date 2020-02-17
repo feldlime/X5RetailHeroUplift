@@ -113,7 +113,6 @@ def main():
 
     logger.info('Loading features...')
     with open('features.pkl', 'rb') as f:
-        features = pickle.load(f)
         features: pd.DataFrame = pickle.load(f)
     logger.info('Features are loaded')
 
