@@ -27,6 +27,20 @@ ORDER_COLUMNS = [
     'store_id',
 ]
 
+FLOAT32_MAX = np.finfo(np.float32).max
+POINT_TYPES = ('regular', 'express')
+POINT_EVENT_TYPES = ('spent', 'received')
+WEEK_DAYS = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+]
+TIME_LABELS = ['Night', 'Morning', 'Afternoon', 'Evening']
+
 
 def make_purchase_features_for_last_days(
     purchases: pd.DataFrame,
@@ -87,6 +101,12 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         .merge(order_interval_features, on='client_id')
     )
 
+    logger.info('Creating ratio time features...')
+    ratio_time_features = make_ratio_time_features(features)
+    logger.info('Ratio time features are created')
+
+    features = features.merge(ratio_time_features, on='client_id')
+
     assert len(features) == n_clients, \
         f'n_clients = {n_clients} but len(features) = {len(features)}'
 
@@ -139,8 +159,10 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     o_gb = purchase_agg.groupby('client_id')
     complex_features = o_gb.agg(
         {
-            'product_id_count': ['mean', 'median'],  # mean products in order
-            'product_quantity_max': ['mean', 'median'],  # mean max number of one product
+            # mean products in order
+            'product_id_count': ['mean', 'median'],
+            # mean max number of one product
+            'product_quantity_max': ['mean', 'median'],
         }
     )
     drop_column_multi_index_inplace(complex_features)
@@ -170,11 +192,12 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
             'datetime': ['max'],  # datetime of last order
         }
 
-    for points_type in ('regular', 'express'):
-        for event_type in ('spent', 'received'):
+    # is regular/express points spent/received
+    for points_type in POINT_TYPES:
+        for event_type in POINT_EVENT_TYPES:
             col_name = f'{points_type}_points_{event_type}'
             new_col_name = f'is_{points_type}_points_{event_type}'
-            orders[new_col_name] = (orders[col_name] > 0).astype(int)
+            orders[new_col_name] = (orders[col_name] != 0).astype(int)
             agg_dict[new_col_name] = ['sum']
 
     features = o_gb.agg(agg_dict)
@@ -186,57 +209,95 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
     ).dt.total_seconds() // SECONDS_IN_DAY
     features.drop(columns=['datetime_max'], inplace=True)
 
+    # TODO: check fillna and inf correct replace
+    # proportion of regular/express points spent to all transactions
+    for points_type in POINT_TYPES:
+        for event_type in POINT_EVENT_TYPES:
+            col_name = f'is_{points_type}_points_{event_type}_sum'
+            new_col_name = f'proportion_count_{points_type}_points_{event_type}'
+            features[new_col_name] = (
+                    features[col_name] / features['transaction_id_count']
+            )
+
+    express_col = f'is_express_points_spent_sum'
+    regular_col = f'is_regular_points_spent_sum'
+    new_col_name = f'ratio_count_express_to_regular_points_spent'
+    features[new_col_name] = (
+            features[express_col] / features[regular_col]
+    ).replace(np.inf, FLOAT32_MAX)
+
+    for points_type in POINT_TYPES:
+        spent_col = f'is_{points_type}_points_spent_sum'
+        received_col = f'is_{points_type}_points_received_sum'
+        new_col_name = f'ratio_count_{points_type}_points_spent_to_received'
+        features[new_col_name] = (
+                features[spent_col] / features[received_col]
+        ).replace(np.inf, 1000)
+
     return features
 
 
 def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
-    orders['weekday'] = orders['datetime'].dt.dayofweek
-
-    time_bins = [-1, 6, 11, 18, 24]
-    time_labels = ['Night', 'Morning', 'Afternoon', 'Evening']
-    orders['part_of_day'] = pd.cut(
-        orders['datetime'].dt.hour,
-        bins=time_bins,
-        labels=time_labels,
-    ).astype(str)
-
-    orders['time_part'] = orders['weekday'].astype(str) + orders['part_of_day']
-
-    time_part_encoder = LabelEncoder()
-    orders['time_part'] = time_part_encoder.fit_transform(orders['time_part'])
-
-    columns = time_part_encoder.inverse_transform(
-        np.arange(len(time_part_encoder.classes_))
-    )
-
     # np.unique returns sorted array
     client_ids = np.unique(orders['client_id'].values)
 
-    time_part_count = make_count_csr(
+    orders['weekday'] = np.array(WEEK_DAYS)[
+        orders['datetime'].dt.dayofweek.values
+    ]
+
+    time_bins = [-1, 6, 11, 18, 24]
+
+    orders['part_of_day'] = pd.cut(
+        orders['datetime'].dt.hour,
+        bins=time_bins,
+        labels=TIME_LABELS,
+    ).astype(str)
+
+    time_part_encoder = LabelEncoder()
+    orders['part_of_day'] = time_part_encoder.fit_transform(orders['part_of_day'])
+
+    time_part_columns_name = time_part_encoder.inverse_transform(
+        np.arange(len(time_part_encoder.classes_))
+    )
+
+    time_part_cols = make_count_csr(
         orders,
         index_col='client_id',
-        value_col='time_part',
+        value_col='part_of_day',
     )[client_ids, :]  # drop empty rows
 
-    time_part_count = pd.DataFrame(time_part_count.toarray(), columns=columns)
-    time_part_count['client_id'] = client_ids
+    time_part_cols = pd.DataFrame(
+        time_part_cols.toarray(),
+        columns=time_part_columns_name,
+    )
+    time_part_cols['client_id'] = client_ids
 
-    time_part_sum = make_sum_csr(
-        df=orders,
-        value_col='time_part',
-        col_to_sum='purchase_sum',
-        col_index_col='client_id',
+    weekday_encoder = LabelEncoder()
+    orders['weekday'] = weekday_encoder.fit_transform(orders['weekday'])
+
+    weekday_column_names = weekday_encoder.inverse_transform(
+        np.arange(len(weekday_encoder.classes_))
+    )
+    weekday_cols = make_count_csr(
+        orders,
+        index_col='client_id',
+        value_col='weekday',  # weekday time part
     )[client_ids, :]  # drop empty rows
-
-    time_part_sum = pd.DataFrame(time_part_sum.toarray(), columns=columns)
-    time_part_sum['client_id'] = client_ids
+    weekday_cols = pd.DataFrame(
+        weekday_cols.toarray(),
+        columns=weekday_column_names,
+    )
+    weekday_cols['client_id'] = client_ids
 
     time_part_features = pd.merge(
-        left=time_part_count,
-        right=time_part_sum,
+        left=time_part_cols,
+        right=weekday_cols,
         on='client_id',
-        suffixes=('_count', '_sum'),
     )
+    time_part_features.columns = [
+        f'{col}_orders_count' if col != 'client_id' else col
+        for col in time_part_features.columns
+    ]
 
     return time_part_features
 
@@ -348,3 +409,22 @@ def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
     features.fillna(-3, inplace=True)
 
     return features
+
+
+def make_ratio_time_features(features: pd.DataFrame) -> pd.DataFrame:
+    time_labels = TIME_LABELS + WEEK_DAYS
+    columns = [f'{col}_orders_count' for col in time_labels]
+    share_columns = [f'{col}_share' for col in columns]
+
+    time_features = features.reindex(columns=columns).values
+    orders_count = features['transaction_id_count'].values
+
+    share_time_features = time_features / orders_count.reshape(-1, 1)
+
+    share_time_features = pd.DataFrame(
+        share_time_features,
+        columns=share_columns,
+    )
+    share_time_features['client_id'] = features['client_id']
+
+    return share_time_features

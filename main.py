@@ -104,17 +104,19 @@ def save_submission(indices_test, test_pred, filename):
 
 
 def main():
-    # features = prepare_features()
-    #
-    # logger.info('Saving features...')
-    # with open('features.pkl', 'wb') as f:
-    #     pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
-    # logger.info('Features are saved')
+    features = prepare_features()
+
+    logger.info('Saving features...')
+    with open('features.pkl', 'wb') as f:
+        pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
+    logger.info('Features are saved')
 
     logger.info('Loading features...')
     with open('features.pkl', 'rb') as f:
+        features = pickle.load(f)
         features: pd.DataFrame = pickle.load(f)
     logger.info('Features are loaded')
+
 
     logger.info(f'Features shape: {features.shape}')
 
