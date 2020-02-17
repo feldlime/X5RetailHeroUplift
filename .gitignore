@@ -20,3 +20,6 @@ submissions
 .DS_Store
 
 venv
+
+catboost_info
+
