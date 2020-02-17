@@ -30,7 +30,15 @@ ORDER_COLUMNS = [
 FLOAT32_MAX = np.finfo(np.float32).max
 POINT_TYPES = ('regular', 'express')
 POINT_EVENT_TYPES = ('spent', 'received')
-WEEK_DAYS = list(range(0, 7))
+WEEK_DAYS = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+]
 TIME_LABELS = ['Night', 'Morning', 'Afternoon', 'Evening']
 
 
@@ -221,10 +229,11 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
     # np.unique returns sorted array
     client_ids = np.unique(orders['client_id'].values)
 
-    orders['weekday'] = orders['datetime'].dt.dayofweek
+    orders['weekday'] = np.array(WEEK_DAYS)[
+        orders['datetime'].dt.dayofweek.values
+    ]
 
     time_bins = [-1, 6, 11, 18, 24]
-    # time_labels = ['Night', 'Morning', 'Afternoon', 'Evening']
 
     orders['part_of_day'] = pd.cut(
         orders['datetime'].dt.hour,
@@ -251,12 +260,21 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
     )
     time_part_cols['client_id'] = client_ids
 
+    weekday_encoder = LabelEncoder()
+    orders['weekday'] = weekday_encoder.fit_transform(orders['weekday'])
+
+    weekday_column_names = weekday_encoder.inverse_transform(
+        np.arange(len(weekday_encoder.classes_))
+    )
     weekday_cols = make_count_csr(
         orders,
         index_col='client_id',
         value_col='weekday',  # weekday time part
     )[client_ids, :]  # drop empty rows
-    weekday_cols = pd.DataFrame(weekday_cols.toarray(), columns=WEEK_DAYS)
+    weekday_cols = pd.DataFrame(
+        weekday_cols.toarray(),
+        columns=weekday_column_names,
+    )
     weekday_cols['client_id'] = client_ids
 
     time_part_features = pd.merge(
@@ -264,7 +282,10 @@ def make_time_features(orders: pd.DataFrame) -> pd.DataFrame:
         right=weekday_cols,
         on='client_id',
     )
-
+    time_part_features.columns = [
+        f'{col}_orders_count' if col != 'client_id' else col
+        for col in time_part_features.columns
+    ]
 
     return time_part_features
 
@@ -379,30 +400,19 @@ def make_order_interval_features(orders: pd.DataFrame) -> pd.DataFrame:
 
 
 def make_ratio_time_features(features: pd.DataFrame) -> pd.DataFrame:
-    client_ids = np.unique(features['client_id'].values)
+    time_labels = TIME_LABELS + WEEK_DAYS
+    columns = [f'{col}_orders_count' for col in time_labels]
+    share_columns = [f'{col}_share' for col in columns]
 
-    part_time_features = features.reindex(columns=TIME_LABELS).values \
-                    / features['transaction_id_count'].values.reshape(-1, 1)
-    part_time_labels = [ 'ratio_'+ str(lable) for lable in TIME_LABELS]
-    part_time_features = pd.DataFrame(
-        part_time_features,
-        columns=part_time_labels,
-    )
-    part_time_features['client_id'] = client_ids
+    time_features = features.reindex(columns=columns).values
+    orders_count = features['transaction_id_count'].values
 
-    weekday_time_features = features.reindex(columns=WEEK_DAYS).values \
-                    / features['transaction_id_count'].values.reshape(-1, 1)
-    weekday_time_lables = ['ratio_'+ str(lable) for lable in WEEK_DAYS]
-    weekday_time_features = pd.DataFrame(
-        weekday_time_features,
-        columns=weekday_time_lables
-    )
-    weekday_time_features['client_id'] = client_ids
+    share_time_features = time_features / orders_count.reshape(-1, 1)
 
-    ratio_time_features = (
-        part_time_features.merge(
-            weekday_time_features,
-            on='client_id',
-        )
+    share_time_features = pd.DataFrame(
+        share_time_features,
+        columns=share_columns,
     )
-    return ratio_time_features
+    share_time_features['client_id'] = features['client_id']
+
+    return share_time_features
