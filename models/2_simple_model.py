@@ -3,12 +3,13 @@ from os.path import join as pjoin
 
 import numpy as np
 import pandas as pd
+from lightgbm import LGBMClassifier
 
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import GradientBoostingClassifier
 
-from utils import uplift_score, DATA_PATH, SUBMISSIONS_PATH
-
+from models.metrics import uplift_metrics
+from config import DATA_PATH, SUBMISSIONS_PATH
 
 logfile_format = '[%(asctime)s] %(name)-10s %(levelname)-8s %(message)s'
 logging.basicConfig(format=logfile_format, level=logging.DEBUG)
@@ -122,7 +123,7 @@ def main():
         target_train=target_learn,
         X_test=X_valid,
     )
-    valid_score = uplift_score(
+    valid_score = uplift_metrics(
         valid_uplift,
         treatment=treatment_valid,
         target=target_valid,

@@ -12,3 +12,14 @@ submissions
 # Python
 *.pyc
 
+# data files
+*features*.csv
+*.7z
+*.pkl
+
+.DS_Store
+
+venv
+
+catboost_info
+
