@@ -176,7 +176,7 @@ def main():
     logger.info(f'Valid scores: {valid_scores}')
 
     feature_importances = get_feature_importances(clf, features.columns)
-    print(feature_importances.head(15), file=sys.stderr)
+    print(feature_importances.head(30), file=sys.stderr)
 
     logging.info('Build model for full train data set...')
     clf = uplift_fit(clf_, X_train, treatment_train, target_train)
