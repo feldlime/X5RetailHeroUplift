@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import LabelEncoder
 
-from config import N_ALS_ITERATIONS
+from config import N_ALS_ITERATIONS, MAILING_DATETIME
 from features.utils import (
     drop_column_multi_index_inplace,
     make_count_csr,
@@ -33,8 +33,7 @@ def make_purchase_features_for_last_days(
     n_days: int
 ) -> pd.DataFrame:
     logger.info(f'Creating purchase features for last {n_days} days...')
-    max_datetime = purchases['datetime'].max()
-    cutoff = max_datetime - timedelta(days=n_days)
+    cutoff = MAILING_DATETIME - timedelta(days=n_days)
     purchases_last = purchases[purchases['datetime'] >= cutoff]
     purchase_last_features = make_purchase_features(purchases_last)
     logger.info(f'Purchase features for last {n_days} days are created')
@@ -168,9 +167,8 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
     drop_column_multi_index_inplace(features)
     features.reset_index(inplace=True)
 
-    most_recent_order_datetime = orders['datetime'].max()
     features['days_from_last_order'] = (
-        most_recent_order_datetime - features['datetime_max']
+        MAILING_DATETIME - features['datetime_max']
     ).dt.total_seconds() // SECONDS_IN_DAY
     features.drop(columns=['datetime_max'], inplace=True)
 
