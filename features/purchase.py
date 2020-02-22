@@ -251,28 +251,16 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
                 features[spent_col] / features[received_col]
         ).replace(np.inf, 1000)
 
-    purchases_sum = orders[
-        ['client_id', 'purchase_sum']
-    ].groupby('client_id').sum()
-    purchases_sum.rename(
-        columns={'purchase_sum': 'purchases_sum'},
-        inplace=True
-    )
-    features = features.merge(
-        purchases_sum,
-        left_on='client_id',
-        right_on='client_id',
-    )
+
     for points_type in POINT_TYPES:
         spent_col = f'{points_type}_points_spent_sum'
-        orders_sum_col = f'purchases_sum'
+        orders_sum_col = f'purchase_sum_sum'
         new_col_name = f'ratio_sum_{points_type}_points_spent_to_purchases_sum'
         features[new_col_name] = features[spent_col] / features[orders_sum_col]
-    features.drop(labels='purchases_sum', axis='columns')
 
     new_col_name = f'ratio_sum_express_points_spent_to_sum_regular_points_spent'
-    regular_col = f'{POINT_TYPES[0]}_points_spent_sum'
-    express_col = f'{POINT_TYPES[1]}_points_spent_sum'
+    regular_col = f'regular_points_spent_sum'
+    express_col = f'express_points_spent_sum'
     features[new_col_name] = features[express_col] / features[regular_col]
 
 
