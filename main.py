@@ -105,7 +105,6 @@ def save_submission(indices_test, test_pred, filename):
 
 def main():
     features = prepare_features()
-
     logger.info('Saving features...')
     with open('features.pkl', 'wb') as f:
         pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -115,7 +114,6 @@ def main():
     with open('features.pkl', 'rb') as f:
         features: pd.DataFrame = pickle.load(f)
     logger.info('Features are loaded')
-
 
     logger.info(f'Features shape: {features.shape}')
 
@@ -154,9 +152,10 @@ def main():
 
     clf_ = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=5000,
+        n_estimators=20000,
         num_leaves=30,
-        max_depth=5,
+        max_depth=6,
+        max_bin=100,
         # reg_lambda=1,
         # learning_rate=0.1,
         random_state=RANDOM_STATE,

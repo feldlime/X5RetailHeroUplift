@@ -91,6 +91,12 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     order_interval_features = make_order_interval_features(orders)
     logger.info('Order interval features are created')
 
+    logger.info('Creating features for orders with express points spent ...')
+    orders_with_express_points_spent_features = \
+        make_features_for_orders_with_express_points_spent(orders)
+    logger.info('Features for orders with express points spent are created')
+
+
     features = (
         purchase_features
         .merge(order_features, on='client_id')
@@ -98,6 +104,7 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         .merge(product_features, on='client_id')
         .merge(store_features, on='client_id')
         .merge(order_interval_features, on='client_id')
+        .merge(orders_with_express_points_spent_features, on='client_id')
     )
 
     logger.info('Creating ratio time features...')
@@ -115,6 +122,16 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     features['most_popular_store_share'] = (
         features['store_transaction_id_count_max'] /
         features['transaction_id_count']
+    )
+
+    features['ratio_days_from_last_order_eps_to_median_interval_eps'] = (
+        features['days_from_last_express_points_spent'] /
+        features['orders_interval_median_eps']
+    )
+
+    features['ratio_mean_purchase_sum_eps_to_mean_purchase_sum'] = (
+        features['median_purchase_sum_eps'] /
+        features['purchase_sum_median']
     )
 
     logger.info(f'Purchase features are created. Shape = {features.shape}')
@@ -166,12 +183,13 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     )
     drop_column_multi_index_inplace(complex_features)
     complex_features.reset_index(inplace=True)
-
     features = pd.merge(
         simple_features,
         complex_features,
         on='client_id'
     )
+
+
     return features
 
 
@@ -231,6 +249,66 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
         features[new_col_name] = (
                 features[spent_col] / features[received_col]
         ).replace(np.inf, 1000)
+
+
+    for points_type in POINT_TYPES:
+        spent_col = f'{points_type}_points_spent_sum'
+        orders_sum_col = f'purchase_sum_sum'
+        new_col_name = f'ratio_sum_{points_type}_points_spent_to_purchases_sum'
+        features[new_col_name] = features[spent_col] / features[orders_sum_col]
+
+    new_col_name = f'ratio_sum_express_points_spent_to_sum_regular_points_spent'
+    regular_col = f'regular_points_spent_sum'
+    express_col = f'express_points_spent_sum'
+    features[new_col_name] = features[express_col] / features[regular_col]
+
+    return features
+
+
+def make_features_for_orders_with_express_points_spent(
+        orders: pd.DataFrame
+) -> pd.DataFrame:
+
+    orders_with_eps = orders.loc[orders['express_points_spent'] != 0]
+
+    o_gb = orders_with_eps.groupby(['client_id'])
+    features = o_gb.agg(
+        {
+            'purchase_sum': ['median'],
+            'datetime': ['max']
+        }
+    )
+    drop_column_multi_index_inplace(features)
+    features.reset_index(inplace=True)
+    features['days_from_last_express_points_spent'] = (
+            MAILING_DATETIME - features['datetime_max']
+    ).dt.days
+    features.drop(columns=['datetime_max'], inplace=True)
+    features.rename(
+        columns={
+            'purchase_sum_median': 'median_purchase_sum_eps'
+        },
+        inplace=True,
+    )
+
+    order_int_features = make_order_interval_features(orders_with_eps)
+    renamings = {
+        col: f'{col}_eps'
+        for col in order_int_features
+        if col != 'client_id'
+    }
+    order_int_features.rename(columns=renamings, inplace=True)
+
+    features = pd.merge(
+        features,
+        order_int_features,
+        on='client_id',
+    )
+
+    features = features.merge(
+        pd.Series(orders['client_id'].unique(), name='client_id'),
+        how='right',
+    )
 
     return features
 
