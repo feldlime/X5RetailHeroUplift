@@ -103,7 +103,6 @@ def make_latent_features(
     latent_feature_names = []
     for col, n_factors in N_FACTORS.items():
         logger.info(f'Creating latent features for {col}')
-        start_time = time.time()
 
         counts_subject_by_client = (
             purchases_products
@@ -127,11 +126,41 @@ def make_latent_features(
         purchases_products.drop(columns=share_col, inplace=True)
 
         latent_feature_names.extend(
-            [f'{col}_f{i+1}' for i in range(n_factors)])
+            [f'{col}_f{i+1}' for i in range(n_factors)]
+        )
 
-        end_time = time.time()
-        elapsed = end_time - start_time
-        logger.info(f'Features for {col} were created in {elapsed:.1f} sec')
+        logger.info(f'Features for {col} were created')
+
+    # Add features that show how much client likes product in category
+    logger.info(f'Creating latent features for product in 4th category')
+    col = 'product_id'
+    counts_products_by_client_and_category = (
+        purchases_products
+            .groupby(['client_id', 'level_4'])[col]
+            .transform('count')
+    )
+    share_col = f'{col}_share_by_client_and_cat'
+    purchases_products[share_col] = 1 / counts_products_by_client_and_category
+
+    n_factors = N_FACTORS[col]
+    latent_feature_matrices.append(
+        make_latent_feature(
+            purchases_products,
+            index_col='client_id',
+            value_col=col,
+            n_factors=n_factors,
+            n_iterations=N_ITERATIONS,
+            sum_col=share_col,
+        )
+    )
+
+    purchases_products.drop(columns=share_col, inplace=True)
+
+    latent_feature_names.extend(
+        [f'product_by_cat_f{i+1}' for i in range(n_factors)]
+    )
+
+    logger.info(f'Features for {col} were created in sec')
 
     latent_features = pd.DataFrame(
         np.hstack(latent_feature_matrices),
