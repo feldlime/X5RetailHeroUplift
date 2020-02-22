@@ -92,6 +92,12 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     order_interval_features = make_order_interval_features(orders)
     logger.info('Order interval features are created')
 
+    logger.info('Creating features for orders with express points spent ...')
+    orders_with_express_points_spent_features = \
+        make_features_for_orders_with_express_points_spent(orders)
+    logger.info('Features for orders with express points spent are created')
+
+
     features = (
         purchase_features
         .merge(order_features, on='client_id')
@@ -99,6 +105,7 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         .merge(product_features, on='client_id')
         .merge(store_features, on='client_id')
         .merge(order_interval_features, on='client_id')
+        .merge(orders_with_express_points_spent_features, on='client_id')
     )
 
     logger.info('Creating ratio time features...')
@@ -116,6 +123,17 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     features['most_popular_store_share'] = (
         features['store_transaction_id_count_max'] /
         features['transaction_id_count']
+    )
+
+
+    features['ratio_days_from_last_order_eps_to_median_interval_eps'] = (
+        features['days_from_last_express_points_spent'] /
+        features['orders_interval_median_eps']
+    )
+
+    features['ratio_mean_purchase_sum_eps_to_mean_purchase_sum'] = (
+        features['median_purchase_sum_eps'] /
+        features['purchase_sum_median']
     )
 
     logger.info(f'Purchase features are created. Shape = {features.shape}')
@@ -263,34 +281,53 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
     express_col = f'express_points_spent_sum'
     features[new_col_name] = features[express_col] / features[regular_col]
 
+    return features
 
-    new_col_name = f'days_from_last_express_points_spent'
-    tr_wits_expr_sp = orders.loc[
-        (orders['express_points_spent'] != 0)
-    ]
-    last_tr_wits_expr_sp = tr_wits_expr_sp .groupby('client_id').last()
-    features[new_col_name] = (
-            MAILING_DATETIME - last_tr_wits_expr_sp['datetime']
-    ).dt.days
 
-    median_tr_wits_expr_sp = make_order_interval_features(tr_wits_expr_sp)
-    cols = {}
-    for col_name in median_tr_wits_expr_sp.columns:
-        if col_name == 'client_id':
-            continue
-        cols[col_name] = "express_spent_" + col_name
-    median_tr_wits_expr_sp.rename(columns=cols, inplace=True)
-    features = features.merge(
-        median_tr_wits_expr_sp,
-        left_on='client_id',
-        right_on='client_id',
+def make_features_for_orders_with_express_points_spent(
+        orders: pd.DataFrame
+) -> pd.DataFrame:
+
+    orders_with_eps = orders.loc[orders['express_points_spent'] != 0]
+
+    o_gb = orders_with_eps.groupby(['client_id'])
+    features = o_gb.agg(
+        {
+            'purchase_sum': ['median'],
+            'datetime': ['max']
+        }
+    )
+    drop_column_multi_index_inplace(features)
+    features.reset_index(inplace=True)
+    features['days_from_last_express_points_spent'] = (
+            MAILING_DATETIME - features['datetime_max']
+    )
+    features.drop(columns=['datetime_max'], inplace=True)
+    features.rename(
+        columns={
+            'purchase_sum_median': 'median_purchase_sum_eps'
+        },
+        inplace=True,
     )
 
-    new_col_name = 'ratio_last_express_points_spent_to_median_' \
-                   'interval_express_points_spent'
-    express_col = 'days_from_last_express_points_spent'
-    express_col_inter = 'express_spent_orders_interval_median'
-    features[new_col_name] = features[express_col]/features[express_col_inter]
+    order_int_features = make_order_interval_features(orders_with_eps)
+    renamings = {
+        col: f'{col}_eps'
+        for col in order_int_features
+        if col != 'client_id'
+    }
+    order_int_features.rename(columns=renamings, inplace=True)
+
+    features = pd.merge(
+        features,
+        order_int_features,
+        on='client_id',
+    )
+
+    features = features.merge(
+        pd.Series(orders['client_id'].unique(), name='client_id'),
+        how='right',
+    )
 
     return features
 
