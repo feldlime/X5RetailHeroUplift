@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import pandas as pd
 from implicit.als import AlternatingLeastSquares
@@ -17,30 +19,29 @@ def make_count_csr(
     index_col: str,
     value_col: str,
 ) -> sparse.csr_matrix:
-    coo = sparse.coo_matrix(
-        (
-            np.ones(len(df)),
-            (
-                df[index_col].values,
-                df[value_col].values,
-            )
-        )
+    col_to_sum_name = '__col_to_sum__'
+    df['__col_to_sum__'] = 1
+    csr = make_sum_csr(
+        df,
+        index_col=index_col,
+        value_col=value_col,
+        col_to_sum=col_to_sum_name,
     )
-    csr = coo.tocsr(copy=False)
+    df.drop(columns=col_to_sum_name, inplace=True)
     return csr
 
 
 def make_sum_csr(
-        df: pd.DataFrame,
-        value_col: str,
-        col_to_sum: str,
-        col_index_col: str = 'client_id',
+    df: pd.DataFrame,
+    index_col: str,
+    value_col: str,
+    col_to_sum: str,
 ) -> sparse.csr_matrix:
     coo = sparse.coo_matrix(
         (
             df[col_to_sum].values,
             (
-                df[col_index_col].values,
+                df[index_col].values,
                 df[value_col].values,
             )
         )
@@ -55,8 +56,17 @@ def make_latent_feature(
     value_col: str,
     n_factors: int,
     n_iterations: int,
+    sum_col: Optional[str] = None
 ):
-    csr = make_count_csr(df, index_col=index_col, value_col=value_col)
+    if sum_col is None:
+        csr = make_count_csr(df, index_col=index_col, value_col=value_col)
+    else:
+        csr = make_sum_csr(
+            df,
+            index_col=index_col,
+            value_col=value_col,
+            col_to_sum=sum_col,
+        )
 
     model = AlternatingLeastSquares(
         factors=n_factors,
