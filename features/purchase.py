@@ -125,7 +125,6 @@ def make_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         features['transaction_id_count']
     )
 
-
     features['ratio_days_from_last_order_eps_to_median_interval_eps'] = (
         features['days_from_last_express_points_spent'] /
         features['orders_interval_median_eps']
@@ -177,36 +176,6 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
         on='client_id'
     )
 
-    express_purchases = purchases[
-        [
-            'client_id',
-            'express_points_spent',
-            'product_quantity',
-        ]
-    ]
-    express_purchases = express_purchases.loc[
-        (express_purchases['express_points_spent'] != 0)
-    ]
-    express_purchases = express_purchases.groupby(
-        'client_id'
-    ).sum()
-    express_purchases_col = 'product_quantity_with_express_points_spent'
-    express_purchases.rename(
-        columns={
-            'product_quantity': express_purchases_col
-        },
-        inplace=True,
-    )
-    express_purchases.reset_index(inplace=True)
-    features = pd.merge(
-        express_purchases,
-        features,
-        on='client_id'
-    )
-    features[f'{express_purchases_col}_to_product_count_median'] = (
-            features[express_purchases_col] /
-            features['product_id_count_median']
-    )
 
     return features
 
