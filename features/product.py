@@ -85,9 +85,16 @@ def make_usual_features(
     pp_gb = purchases_products.groupby('client_id')
     usual_features = pp_gb.agg(
         {
-            'netto': 'median',
+            'netto': ['median', 'max', 'sum'],
             'is_own_trademark': ['sum', 'mean'],
             'is_alcohol': ['sum', 'mean'],
+            'level_1': ['nunique'],
+            'level_2': ['nunique'],
+            'level_3': ['nunique'],
+            'level_4': ['nunique'],
+            'segment_id': ['nunique'],
+            'brand_id': ['nunique'],
+            'vendor_id': ['nunique'],
         }
     )
     drop_column_multi_index_inplace(usual_features)
