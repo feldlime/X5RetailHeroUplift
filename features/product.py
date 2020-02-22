@@ -6,7 +6,7 @@ import pandas as pd
 import time
 
 from config import N_ALS_ITERATIONS
-from features.utils import drop_column_multi_index_inplace, make_latent_feature
+from .utils import drop_column_multi_index_inplace, make_latent_feature
 
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -105,6 +105,14 @@ def make_latent_features(
         logger.info(f'Creating latent features for {col}')
         start_time = time.time()
 
+        counts_subject_by_client = (
+            purchases_products
+            .groupby('client_id')[col]
+            .transform('count')
+        )
+        share_col = f'{col}_share'
+        purchases_products[share_col] = 1 / counts_subject_by_client
+
         latent_feature_matrices.append(
             make_latent_feature(
                 purchases_products,
@@ -112,8 +120,11 @@ def make_latent_features(
                 value_col=col,
                 n_factors=n_factors,
                 n_iterations=N_ITERATIONS,
+                sum_col=share_col,
             )
         )
+
+        purchases_products.drop(columns=share_col, inplace=True)
 
         latent_feature_names.extend(
             [f'{col}_f{i+1}' for i in range(n_factors)])

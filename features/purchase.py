@@ -9,7 +9,6 @@ from config import N_ALS_ITERATIONS, MAILING_DATETIME
 from features.utils import (
     drop_column_multi_index_inplace,
     make_count_csr,
-    make_sum_csr,
     SECONDS_IN_DAY,
     make_latent_feature,
 )
