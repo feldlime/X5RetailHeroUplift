@@ -153,12 +153,43 @@ def make_really_purchase_features(purchases: pd.DataFrame) -> pd.DataFrame:
     )
     drop_column_multi_index_inplace(complex_features)
     complex_features.reset_index(inplace=True)
-
     features = pd.merge(
         simple_features,
         complex_features,
         on='client_id'
     )
+
+    express_purchases = purchases[
+        [
+            'client_id',
+            'express_points_spent',
+            'product_quantity',
+        ]
+    ]
+    express_purchases = express_purchases.loc[
+        (express_purchases['express_points_spent'] != 0)
+    ]
+    express_purchases = express_purchases.groupby(
+        'client_id'
+    ).sum()
+    express_purchases_col = 'product_quantity_with_express_points_spent'
+    express_purchases.rename(
+        columns={
+            'product_quantity': express_purchases_col
+        },
+        inplace=True,
+    )
+    express_purchases.reset_index(inplace=True)
+    features = pd.merge(
+        express_purchases,
+        features,
+        on='client_id'
+    )
+    features[f'{express_purchases_col}_to_product_count_median'] = (
+            features[express_purchases_col] /
+            features['product_id_count_median']
+    )
+
     return features
 
 
@@ -219,6 +250,59 @@ def make_order_features(orders: pd.DataFrame) -> pd.DataFrame:
         features[new_col_name] = (
                 features[spent_col] / features[received_col]
         ).replace(np.inf, 1000)
+
+    purchases_sum = orders[
+        ['client_id', 'purchase_sum']
+    ].groupby('client_id').sum()
+    purchases_sum.rename(
+        columns={'purchase_sum': 'purchases_sum'},
+        inplace=True
+    )
+    features = features.merge(
+        purchases_sum,
+        left_on='client_id',
+        right_on='client_id',
+    )
+    for points_type in POINT_TYPES:
+        spent_col = f'{points_type}_points_spent_sum'
+        orders_sum_col = f'purchases_sum'
+        new_col_name = f'ratio_sum_{points_type}_points_spent_to_purchases_sum'
+        features[new_col_name] = features[spent_col] / features[orders_sum_col]
+    features.drop(labels='purchases_sum', axis='columns')
+
+    new_col_name = f'ratio_sum_express_points_spent_to_sum_regular_points_spent'
+    regular_col = f'{POINT_TYPES[0]}_points_spent_sum'
+    express_col = f'{POINT_TYPES[1]}_points_spent_sum'
+    features[new_col_name] = features[express_col] / features[regular_col]
+
+
+    new_col_name = f'days_from_last_express_points_spent'
+    tr_wits_expr_sp = orders.loc[
+        (orders['express_points_spent'] != 0)
+    ]
+    last_tr_wits_expr_sp = tr_wits_expr_sp .groupby('client_id').last()
+    features[new_col_name] = (
+            MAILING_DATETIME - last_tr_wits_expr_sp['datetime']
+    ).dt.days
+
+    median_tr_wits_expr_sp = make_order_interval_features(tr_wits_expr_sp)
+    cols = {}
+    for col_name in median_tr_wits_expr_sp.columns:
+        if col_name == 'client_id':
+            continue
+        cols[col_name] = "express_spent_" + col_name
+    median_tr_wits_expr_sp.rename(columns=cols, inplace=True)
+    features = features.merge(
+        median_tr_wits_expr_sp,
+        left_on='client_id',
+        right_on='client_id',
+    )
+
+    new_col_name = 'ratio_last_express_points_spent_to_median_' \
+                   'interval_express_points_spent'
+    express_col = 'days_from_last_express_points_spent'
+    express_col_inter = 'express_spent_orders_interval_median'
+    features[new_col_name] = features[express_col]/features[express_col_inter]
 
     return features
 

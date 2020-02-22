@@ -105,7 +105,6 @@ def save_submission(indices_test, test_pred, filename):
 
 def main():
     features = prepare_features()
-
     logger.info('Saving features...')
     with open('features.pkl', 'wb') as f:
         pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
@@ -113,7 +112,6 @@ def main():
 
     # logger.info('Loading features...')
     # with open('features.pkl', 'rb') as f:
-    #     features = pickle.load(f)
     #     features: pd.DataFrame = pickle.load(f)
     # logger.info('Features are loaded')
 
@@ -154,9 +152,10 @@ def main():
 
     clf_ = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=5000,
+        n_estimators=20000,
         num_leaves=30,
-        max_depth=5,
+        max_depth=6,
+        max_bin=100,
         # reg_lambda=1,
         # learning_rate=0.1,
         random_state=RANDOM_STATE,
@@ -185,6 +184,13 @@ def main():
     train_scores = uplift_metrics(train_pred, treatment_train, target_train)
     logger.info(f'Train scores: {train_scores}')
     test_pred = uplift_predict(clf, X_test)
+
+    feature_importances = get_feature_importances(clf, features.columns)
+    print(feature_importances.head(30), file=sys.stderr)
+
+    logger.info('Saving model...')
+    with open('model_20k_d6_15_30_60.pkl', 'wb') as f:
+        pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     logger.info('Saving submission...')
     save_submission(indices_test, test_pred, 'submission_updated_features.csv')
