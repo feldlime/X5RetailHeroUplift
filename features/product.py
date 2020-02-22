@@ -167,7 +167,7 @@ def make_latent_features(
         [f'product_by_cat_f{i+1}' for i in range(n_factors)]
     )
 
-    logger.info(f'Features for {col} were created in sec')
+    logger.info(f'Features for {col} were created')
 
     latent_features = pd.DataFrame(
         np.hstack(latent_feature_matrices),
