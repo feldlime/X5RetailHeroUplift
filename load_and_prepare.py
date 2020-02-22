@@ -37,7 +37,7 @@ def prepare_products() -> Tuple[pd.DataFrame, LabelEncoder]:
     products['product_id'] = product_encoder. \
         fit_transform(products['product_id'])
 
-    products = products.fillna(-1)
+    products.fillna(-1, inplace=True)
 
     for col in [
         'level_1', 'level_2', 'level_3', 'level_4',
@@ -66,15 +66,19 @@ def prepare_purchases(
     purchases = load_purchases()
 
     logger.info('Handling n/a values...')
-    purchases.dropna(subset=['client_id', 'product_id'], how='any')
-    purchases.fillna(-1)
+    purchases.dropna(
+        subset=['client_id', 'product_id'],
+        how='any',
+        inplace=True,
+    )
+    purchases.fillna(-1, inplace=True)
 
     logger.info('Label encoding...')
     purchases['client_id'] = client_encoder.transform(purchases['client_id'])
     purchases['product_id'] = product_encoder.transform(purchases['product_id'])
     for col in ['transaction_id', 'store_id']:
         purchases[col] = LabelEncoder(). \
-            fit_transform(purchases[col].fillna(-1).astype(str))
+            fit_transform(purchases[col].astype(str))
 
     logger.info('Date and time conversion...')
     purchases['datetime'] = pd.to_datetime(

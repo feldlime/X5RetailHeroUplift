@@ -44,9 +44,9 @@ def prepare_features() -> pd.DataFrame:
 
     logger.info('Preparing features...')
     purchase_features = make_purchase_features(purchases)
-    purchase_features_15d = make_purchase_features_for_last_days(purchases, 15)
+    # purchase_features_15d = make_purchase_features_for_last_days(purchases, 15)
     purchase_features_30d = make_purchase_features_for_last_days(purchases, 30)
-    purchase_features_60d = make_purchase_features_for_last_days(purchases, 60)
+    # purchase_features_60d = make_purchase_features_for_last_days(purchases, 60)
 
     purchases_ids = purchases.reindex(columns=['client_id', 'product_id'])
     del purchases
@@ -59,31 +59,31 @@ def prepare_features() -> pd.DataFrame:
     features = (
         client_features
             .merge(purchase_features, on='client_id', how='left')
-            .merge(
-                purchase_features_15d,
-                on='client_id',
-                how='left',
-                suffixes=('', '_15d'),
-            )
+            # .merge(
+            #     purchase_features_15d,
+            #     on='client_id',
+            #     how='left',
+            #     suffixes=('', '_15d'),
+            # )
             .merge(
                 purchase_features_30d,
                 on='client_id',
                 how='left',
                 suffixes=('', '_30d'),
             )
-            .merge(
-                purchase_features_60d,
-                on='client_id',
-                how='left',
-                suffixes=('', '_60d'),
-            )
+            # .merge(
+            #     purchase_features_60d,
+            #     on='client_id',
+            #     how='left',
+            #     suffixes=('', '_60d'),
+            # )
             .merge(product_features, on='client_id', how='left')
     )
     del client_features
     del purchase_features
-    del purchase_features_15d
+    # del purchase_features_15d
     del purchase_features_30d
-    del purchase_features_60d
+    # del purchase_features_60d
     del product_features
 
     # TODO: normal fill na
@@ -110,12 +110,12 @@ def main():
         pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
     logger.info('Features are saved')
 
-    # logger.info('Loading features...')
-    # with open('features.pkl', 'rb') as f:
-    #     features: pd.DataFrame = pickle.load(f)
-    # logger.info('Features are loaded')
+    logger.info('Loading features...')
+    with open('features.pkl', 'rb') as f:
+        features: pd.DataFrame = pickle.load(f)
+    logger.info('Features are loaded')
 
-    logging.info(f'Features shape: {features.shape}')
+    logger.info(f'Features shape: {features.shape}')
 
     logger.info('Preparing data sets...')
     features.set_index('client_id', inplace=True)
@@ -175,7 +175,7 @@ def main():
     logger.info(f'Valid scores: {valid_scores}')
 
     feature_importances = get_feature_importances(clf, features.columns)
-    print(feature_importances.head(15), file=sys.stderr)
+    print(feature_importances.head(30), file=sys.stderr)
 
     logging.info('Build model for full train data set...')
     clf = uplift_fit(clf_, X_train, treatment_train, target_train)

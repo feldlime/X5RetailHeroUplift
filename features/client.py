@@ -42,10 +42,10 @@ def make_client_features(clients: pd.DataFrame) -> pd.DataFrame:
         'days_from_min_to_redeem': days_from_min_to_redeem,
         'issue_redeem_delay': days_from_min_to_redeem - days_from_min_to_issue,
     })
-    for event in ['issue', 'redeem']:
-        for interval in INTERVALS:
-            values = getattr(clients[f'first_{event}_date'].dt, interval)
-            features[f'{event}_{interval}'] = values
+    # for event in ['issue', 'redeem']:
+    #     for interval in INTERVALS:
+    #         values = getattr(clients[f'first_{event}_date'].dt, interval)
+    #         features[f'{event}_{interval}'] = values
 
     features = features.fillna(-1)
 
