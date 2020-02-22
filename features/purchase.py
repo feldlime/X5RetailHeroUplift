@@ -301,7 +301,7 @@ def make_features_for_orders_with_express_points_spent(
     features.reset_index(inplace=True)
     features['days_from_last_express_points_spent'] = (
             MAILING_DATETIME - features['datetime_max']
-    )
+    ).dt.days
     features.drop(columns=['datetime_max'], inplace=True)
     features.rename(
         columns={
