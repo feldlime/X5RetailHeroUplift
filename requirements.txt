@@ -1,3 +1,7 @@
+lightgbm
 pandas~=0.25.3
-scikit-learn~=0.21.3
+scikit-learn~=0.22
 numpy~=1.17.4
+
+scipy
+implicit
