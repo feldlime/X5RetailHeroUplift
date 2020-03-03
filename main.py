@@ -66,11 +66,11 @@ def prepare_features() -> pd.DataFrame:
             #     suffixes=('', '_15d'),
             # )
             .merge(
-                purchase_features_30d,
-                on='client_id',
-                how='left',
-                suffixes=('', '_30d'),
-            )
+            purchase_features_30d,
+            on='client_id',
+            how='left',
+            suffixes=('', '_30d'),
+        )
             # .merge(
             #     purchase_features_60d,
             #     on='client_id',
@@ -104,11 +104,11 @@ def save_submission(indices_test, test_pred, filename):
 
 
 def main():
-    features = prepare_features()
-    logger.info('Saving features...')
-    with open('features.pkl', 'wb') as f:
-        pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
-    logger.info('Features are saved')
+    # features = prepare_features()
+    # logger.info('Saving features...')
+    # with open('features.pkl', 'wb') as f:
+    #     pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
+    # logger.info('Features are saved')
 
     logger.info('Loading features...')
     with open('features.pkl', 'rb') as f:
@@ -152,16 +152,28 @@ def main():
 
     clf_ = LGBMClassifier(
         boosting_type='rf',
-        n_estimators=20000,
-        num_leaves=30,
-        max_depth=6,
-        max_bin=100,
+        n_estimators=15000,
+        num_leaves=40,
+        max_depth=3,
+        max_bin=110,
         # reg_lambda=1,
-        # learning_rate=0.1,
+        learning_rate=0.001,
         random_state=RANDOM_STATE,
         n_jobs=-1,
         bagging_freq=1,
         bagging_fraction=0.5,
+        importance_type='split',
+        is_unbalance=True,
+        min_child_samples=20,
+        min_child_weight=0.001,
+        min_split_gain=0.0,
+        objective='binary',
+        reg_alpha=0.0,
+        reg_lambda=0.0,
+        silent=True,
+        subsample=1.0,
+        subsample_for_bin=200000,
+        subsample_freq=0,
     )
 
     logger.info('Build model for learn data set...')
@@ -189,16 +201,17 @@ def main():
     print(feature_importances.head(30), file=sys.stderr)
 
     logger.info('Saving model...')
-    with open('model_20k_d6_15_30_60.pkl', 'wb') as f:
+    with open('model_15k_d5_15_5_50.pkl', 'wb') as f:
         pickle.dump(clf, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     logger.info('Saving submission...')
-    save_submission(indices_test, test_pred, 'submission_updated_features.csv')
+    save_submission(
+        indices_test,
+        test_pred,
+        'submission_updated_features__.csv'
+    )
     logger.info('Submission is ready')
 
 
 if __name__ == '__main__':
     main()
-
-
-
