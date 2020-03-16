@@ -16,14 +16,15 @@ Data:
 ## Final score
 
 *Public: #7 place 0,1060*
+
 *Private: #4 place 0,098330*
 
 [Used features](https://github.com/feldlime/X5RetailHeroUplift/wiki/Features)
 
 # Run
 
-`python main.py`
+```python main.py```
 
 # License
 
-This project is open-sourced software licensed under the MIT license.
+This project is open-sourced software licensed under the [MIT license](https://github.com/feldlime/X5RetailHeroUplift/blob/master/LICENSE).
