@@ -1,17 +1,29 @@
 RetailHero Uplift Modeling
 ==========================
 
+# About
 Задача на uplift-моделирование. Необходимо отранжировать клиентов по убыванию эффективности коммуникации.
 
 Страница соревнования: https://retailhero.ai/c/uplift_modeling/
 
-Доступные данные:
-- data/clients.csv — информация о клиентах
-- data/products.csv — информация о товарах
+Data:
+- data/clients.csv
+- data/products.csv
 - data/purchases.csv — история покупок клиентов до смс кампании
-- data/uplift_train.csv — обучающая выборка клиентов, информация о коммуникации и конверсии
+- data/uplift_train.csv — обучающая выборка клиентов, информация о коммуникации и реакции
 - data/uplift_test.csv — тестовые клиенты, для которых необходимо оценить uplift
 
-Пример решения: uplift_solution.py
+## Final score
 
-Перед запуском, необходимо установить библиотеки из requirements.txt
+*Public: #7 place 0,1060*
+*Private: #4 place 0,098330*
+
+[Used features](https://github.com/feldlime/X5RetailHeroUplift/wiki/Features)
+
+# Run
+
+`python main.py`
+
+# License
+
+This project is open-sourced software licensed under the MIT license.
