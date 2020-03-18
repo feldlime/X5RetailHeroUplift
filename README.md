@@ -17,13 +17,15 @@ Data:
 - data/uplift_train.csv - training sample of clients, information about communication and reaction.
 - data/uplift_test.csv - test clients for which it is necessary to evaluate uplift.
 
-### Final score
+## Final score
 
 *Public: #7 place 0.1060*
 
 *Private: #4 place 0.098330*
 
-[Used features](https://github.com/feldlime/X5RetailHeroUplift/wiki/Features)
+## Features
+
+You can find description of all used features [here](https://github.com/feldlime/X5RetailHeroUplift/wiki/Features).
 
 ## Run
 
