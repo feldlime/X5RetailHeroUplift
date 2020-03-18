@@ -1,5 +1,5 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rugleb/surname-detection/blob/master/LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.7%20%7C%203.8-green)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.6%20%7C%203.8-green)](https://www.python.org/)
 
 RetailHero Uplift Modeling
 ==========================
