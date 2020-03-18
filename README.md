@@ -1,17 +1,20 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/rugleb/surname-detection/blob/master/LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.7%20%7C%203.8-green)](https://www.python.org/)
+
 RetailHero Uplift Modeling
 ==========================
 
 # About
-Задача на uplift-моделирование. Необходимо отранжировать клиентов по убыванию эффективности коммуникации.
+It's Uplift-simulation task. It's necessary to sort clients by decreasing communication efficiency.
 
-Страница соревнования: https://retailhero.ai/c/uplift_modeling/
+The competition page: https://retailhero.ai/c/uplift_modeling/.
 
 Data:
 - data/clients.csv
 - data/products.csv
-- data/purchases.csv — история покупок клиентов до смс кампании
-- data/uplift_train.csv — обучающая выборка клиентов, информация о коммуникации и реакции
-- data/uplift_test.csv — тестовые клиенты, для которых необходимо оценить uplift
+- data/purchases.csv - customer purchase history before sms campaign
+- data/uplift_train.csv - training sample of clients, information about communication and reaction.
+- data/uplift_test.csv - test clients for which it is necessary to evaluate uplift
 
 ## Final score
 
