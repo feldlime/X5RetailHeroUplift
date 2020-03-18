@@ -19,9 +19,9 @@ Data:
 
 ## Final score
 
-*Public: #7 place 0.1060*
+*Public: #7 0.1060*
 
-*Private: #4 place 0.098330*
+*Private: #4 0.098330*
 
 ## Features
 
