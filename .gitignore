@@ -1,0 +1,25 @@
+# data paths
+data
+submissions
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+
+#PyCharm
+.idea
+
+# Python
+*.pyc
+
+# data files
+*features*.csv
+*.7z
+*.pkl
+
+.DS_Store
+
+venv
+
+catboost_info
+
